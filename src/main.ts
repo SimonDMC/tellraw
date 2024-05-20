@@ -1,24 +1,40 @@
-import './style.css'
-import typescriptLogo from './typescript.svg'
-import viteLogo from '/vite.svg'
-import { setupCounter } from './counter.ts'
+import { addStylingHook } from "./styling";
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div>
-    <a href="https://vitejs.dev" target="_blank">
-      <img src="${viteLogo}" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://www.typescriptlang.org/" target="_blank">
-      <img src="${typescriptLogo}" class="logo vanilla" alt="TypeScript logo" />
-    </a>
-    <h1>Vite + TypeScript</h1>
-    <div class="card">
-      <button id="counter" type="button"></button>
-    </div>
-    <p class="read-the-docs">
-      Click on the Vite and TypeScript logos to learn more
-    </p>
-  </div>
-`
+// REMOVE THIS WHEN I DONT NEED IT
+function allowFreeDrag(el: HTMLElement) {
+    let pos1 = 0,
+        pos2 = 0,
+        pos3 = 0,
+        pos4 = 0;
+    el.onmousedown = (ev) => {
+        // only mmb
+        if (ev.button !== 1) return;
+        ev = ev || window.event;
+        ev.preventDefault();
+        // get the mouse cursor position at startup:
+        pos3 = ev.clientX;
+        pos4 = ev.clientY;
+        document.onmouseup = () => {
+            document.onmouseup = null;
+            document.onmousemove = null;
+        };
+        // call a function whenever the cursor moves:
+        document.onmousemove = (ev2) => {
+            ev2 = ev2 || window.event;
+            ev2.preventDefault();
+            // calculate the new cursor position:
+            pos1 = pos3 - ev2.clientX;
+            pos2 = pos4 - ev2.clientY;
+            pos3 = ev2.clientX;
+            pos4 = ev2.clientY;
+            // set the element's new position:
+            el.style.top = el.offsetTop - pos2 + "px";
+            el.style.left = el.offsetLeft - pos1 + "px";
+            //console.log(`top: ${el.style.top}, left: ${el.style.left}`);
+        };
+    };
+}
+const el = document.getElementById("editor");
+if (el) allowFreeDrag(el);
 
-setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
+addStylingHook();
