@@ -15,24 +15,25 @@ export function addStylingHook() {
 
         // Create a span element and set its text content to the character
         const span = document.createElement("span");
+        span.contentEditable = "false";
         span.classList.add("char");
         span.innerHTML = char;
 
         // Get the current selection
         const selection = window.getSelection();
-        if (selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
+        if (!selection) return;
+        if (!(selection.rangeCount > 0)) return;
+        const range = selection.getRangeAt(0);
 
-            // Insert the span element at the cursor position
-            range.deleteContents(); // Remove any selected content
-            range.insertNode(span);
+        // Insert the span element at the cursor position
+        range.deleteContents(); // Remove any selected content
+        range.insertNode(span);
 
-            // Move the cursor after the inserted span
-            range.setStartAfter(span);
-            range.setEndAfter(span);
-            selection.removeAllRanges();
-            selection.addRange(range);
-        }
+        // Move the cursor after the inserted span
+        range.setStartAfter(span);
+        range.setEndAfter(span);
+        selection.removeAllRanges();
+        selection.addRange(range);
     });
 
     // Add styling hooks
@@ -57,24 +58,30 @@ export function addStylingHook() {
 }
 
 function style(className: string) {
-    console.log("Styling", className);
-
     const range = selection!.getRangeAt(0);
     const fragment = range.cloneContents();
-    const fragmentTo = document.createDocumentFragment();
     console.log(fragment.children.length);
-    if (!(fragment.children[0] === fragment.firstChild)) {
-        const span = document.createElement("span");
-        span.classList.add(className);
-        span.appendChild(fragment.firstChild as Node);
-        fragmentTo.appendChild(span);
+    // if every child already has the class, remove it
+    let allHaveClass = true;
+    for (let i = 0; i < fragment.children.length; i++) {
+        const span = fragment.children[i] as HTMLElement;
+        if (!span.classList.contains(className)) {
+            allHaveClass = false;
+            break;
+        }
     }
-
-    while (fragment.children.length > 0) {
-        const span = fragment.children[0] as HTMLElement;
-        span.classList.toggle(className);
-        fragmentTo.appendChild(span);
+    if (allHaveClass) {
+        for (let i = 0; i < fragment.children.length; i++) {
+            const span = fragment.children[i] as HTMLElement;
+            span.classList.remove(className);
+        }
+    } else {
+        // otherwise add the class to all children
+        for (let i = 0; i < fragment.children.length; i++) {
+            const span = fragment.children[i] as HTMLElement;
+            span.classList.add(className);
+        }
     }
     range.deleteContents();
-    range.insertNode(fragmentTo);
+    range.insertNode(fragment);
 }
