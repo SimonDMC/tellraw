@@ -24,12 +24,21 @@ body {
 #editor {
   position: absolute;
   font-size: 10em;
-  word-spacing: .1em;
   width: 32em;
   outline: orange solid 2px;
   color: white;
   font-family: 'MinecraftFixed';
   border: none;
+  white-space: keep-all;
+}
+
+/* spaces, if the only thing in an element and at the end of a line, don't render
+ unless they're non-breaking. they can't be non-breaking because then the text
+ doesn't wrap. so we use a non-breaking space and a zero-width space */
+#editor .space {
+  width: .4em;
+  height: .4em;
+  display: inline-block;
 }
 
 /* #editor .bold {
@@ -47,4 +56,14 @@ body {
 
 #editor .underline {
   text-decoration: underline;
+}
+
+/* non-contenteditable spans in a contenteditable surprisingly cause selection problems
+and putting invisible unselectable characters before and after makes it behave normal 
+on chrome */
+#editor span:after, #editor span:before {
+  content: '.';
+  pointer-events: none;
+  user-select: none;
+  font-size: 0;
 }
