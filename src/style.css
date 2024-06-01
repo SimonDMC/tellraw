@@ -32,13 +32,23 @@ body {
   white-space: keep-all;
 }
 
+#editor * {
+  line-height: 0.2em;
+}
+
 /* spaces, if the only thing in an element and at the end of a line, don't render
  unless they're non-breaking. they can't be non-breaking because then the text
- doesn't wrap. so we use a non-breaking space and a zero-width space */
+ doesn't wrap. so we force them to have a fixed width to emulate a space */
 #editor .space {
   width: .4em;
-  height: .4em;
   display: inline-block;
+}
+
+#editor .emoji {
+  width: calc(.8em / 0.7);
+  translate: -.1em .1em;
+  display: inline-block;
+  font-size: .7em;
 }
 
 /* #editor .bold {
