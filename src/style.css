@@ -3,6 +3,11 @@
   src: url('/MinecraftSevenv2-Game.ttf') format('truetype');
 }
 
+@font-face {
+  font-family: 'MinecraftFixed-Bold';
+  src: url('/MinecraftSevenv2-Game-Bold.ttf') format('truetype');
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -25,15 +30,17 @@ body {
   position: absolute;
   font-size: 10em;
   width: 32em;
-  outline: orange solid 2px;
   color: white;
   font-family: 'MinecraftFixed';
   border: none;
   white-space: keep-all;
+  text-shadow: .1em .1em var(--shadow-color);
 }
 
 #editor * {
-  line-height: 0.2em;
+  line-height: .2em;
+  position: relative;
+  --font-size: 1em;
 }
 
 /* spaces, if the only thing in an element and at the end of a line, don't render
@@ -44,28 +51,47 @@ body {
   display: inline-block;
 }
 
-#editor .emoji {
-  width: calc(.8em / 0.7);
-  translate: -.1em .1em;
-  display: inline-block;
-  font-size: .7em;
+/* the increase in font spacing doesn't apply to bolded text, so we have to
+ manually increase the width of the space */
+#editor .space.bold {
+  width: .5em;
 }
 
-/* #editor .bold {
-  font-weight: normal;
-  letter-spacing: .1em;
-} */
+#editor .emoji {
+  width: calc(.8em / 0.6);
+  height: .1em;
+  translate: 0 -.15em;
+  display: inline-block;
+  font-size: .6em;
+  scale: 1.2;
+}
 
 #editor .bold {
-  font-weight: bold;
+  font-weight: normal;
+  font-family: 'MinecraftFixed-Bold';
 }
 
 #editor .italic {
   font-style: italic;
 }
 
-#editor .underline {
-  text-decoration: underline;
+/* known issue: the strikethrough is half a pixel short on both sides
+but fixing that would require some *really* annoying stuff so i think
+i'll leave it like this */
+#editor .underlined {
+  border-bottom: .1em solid white;
+  margin-bottom: -.1em;
+  padding-left: .05em;
+  padding-right: .05em;
+  margin-left: -.05em;
+  margin-right: -.05em;
+}
+
+#editor .strikethrough {
+  text-decoration-line: underline;
+  text-decoration-thickness: .1em;
+  text-underline-offset: -.35em;
+  text-decoration-skip-ink: none;
 }
 
 /* non-contenteditable spans in a contenteditable surprisingly cause selection problems

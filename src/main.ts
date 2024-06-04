@@ -1,4 +1,5 @@
-import { addStylingHook } from "./styling";
+import { addKeybinds } from "./styling";
+import { addEditorHooks } from "./editor";
 
 // REMOVE THIS WHEN I DONT NEED IT
 function allowFreeDrag(el: HTMLElement) {
@@ -37,4 +38,5 @@ function allowFreeDrag(el: HTMLElement) {
 const el = document.getElementById("editor");
 if (el) allowFreeDrag(el);
 
-addStylingHook();
+addEditorHooks();
+addKeybinds();
