@@ -26,38 +26,46 @@ body {
   font-size: .3em;
 }
 
-#editor {
+.editor-stack {
   position: absolute;
   font-size: 10em;
   width: 32em;
+}
+
+.editor {
+  width: 100%;
   color: white;
   font-family: 'MinecraftFixed';
   border: none;
   white-space: keep-all;
-  text-shadow: .1em .1em var(--shadow-color);
+  position: absolute;
 }
 
-#editor * {
+.editor * {
   line-height: .2em;
   position: relative;
-  --font-size: 1em;
+}
+
+#editor-shadow * {
+  color: transparent;
+  text-shadow: .1em .1em var(--shadow);
 }
 
 /* spaces, if the only thing in an element and at the end of a line, don't render
  unless they're non-breaking. they can't be non-breaking because then the text
  doesn't wrap. so we force them to have a fixed width to emulate a space */
-#editor .space {
+.editor .space {
   width: .4em;
   display: inline-block;
 }
 
 /* the increase in font spacing doesn't apply to bolded text, so we have to
  manually increase the width of the space */
-#editor .space.bold {
+.editor .space.bold {
   width: .5em;
 }
 
-#editor .emoji {
+.editor .emoji {
   width: calc(.8em / 0.6);
   height: .1em;
   translate: 0 -.15em;
@@ -66,12 +74,12 @@ body {
   scale: 1.2;
 }
 
-#editor .bold {
+.editor .bold {
   font-weight: normal;
   font-family: 'MinecraftFixed-Bold';
 }
 
-#editor .italic {
+.editor .italic {
   font-style: italic;
 }
 
@@ -92,6 +100,23 @@ i'll leave it like this */
   text-decoration-thickness: .1em;
   text-underline-offset: -.35em;
   text-decoration-skip-ink: none;
+}
+
+#editor-shadow .underlined::after {
+  content: '';
+  border-bottom: .1em solid var(--shadow);
+  position: absolute;
+  font-size: inherit;
+  margin-bottom: -.1em;
+  padding-left: .05em;
+  padding-right: .05em;
+  margin-left: -.05em;
+  margin-right: -.05em;
+  position: absolute;
+  width: 100%;
+  left: 0;
+  bottom: 0;
+  translate: .1em .1em;
 }
 
 /* non-contenteditable spans in a contenteditable surprisingly cause selection problems

@@ -35,7 +35,7 @@ function allowFreeDrag(el: HTMLElement) {
         };
     };
 }
-const el = document.getElementById("editor");
+const el = document.querySelector(".editor-stack") as HTMLElement;
 if (el) allowFreeDrag(el);
 
 addEditorHooks();

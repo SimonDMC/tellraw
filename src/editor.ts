@@ -1,5 +1,12 @@
 // TODO:
 // override undo and redo to work with the custom system
+// fix spaces 1. having the wrong width when underlined 2. having the wrong width when stacked
+// make strikethrough an overlay
+// strikethrough shadow
+
+import { calculateShadowColor } from "./util";
+
+let color = "#FFFFFF";
 
 export function addEditorHooks() {
     const editor = document.getElementById("editor") as HTMLElement;
@@ -13,12 +20,7 @@ export function addEditorHooks() {
         // fix enter
         if (event.key === "Enter") char = "<br>";
 
-        const span = document.createElement("span");
-        // make sure when navigating around the cursor doesn't jump into one of the earlier spans
-        // this causes lots of other issues but we can work around those
-        span.contentEditable = "false";
-        span.classList.add("char");
-        span.innerHTML = char;
+        const span = createCharSpan(char);
 
         // force spaces to be visible
         if (char === " ") span.classList.add("space");
@@ -38,6 +40,8 @@ export function addEditorHooks() {
         range.setEndAfter(span);
         selection.removeAllRanges();
         selection.addRange(range);
+
+        syncEditors();
     });
 
     // wrap emojis in separate spans too (they don't trigger keypress events)
@@ -45,7 +49,11 @@ export function addEditorHooks() {
     editor.addEventListener("input", function (event) {
         // ignore this if the input isn't an emoji
         const data = (event as InputEvent).data;
-        if (!data) return;
+        if (!data) {
+            // still useful for copying over the contents
+            syncEditors();
+            return;
+        }
         if (!/\p{Emoji}/u.test(data)) return;
 
         // mark added character with an id so we can find it and put the cursor after it
@@ -71,6 +79,7 @@ export function addEditorHooks() {
             emoji.remove();
             setTimeout(() => {
                 cooldown = false;
+                syncEditors();
             }, 1);
             return;
         }
@@ -135,6 +144,8 @@ export function addEditorHooks() {
                 range.setEndAfter(child);
                 selection.removeAllRanges();
                 selection.addRange(range);
+
+                syncEditors();
                 return;
             }
         }
@@ -147,12 +158,7 @@ export function addEditorHooks() {
         // i'm using [...toPaste] to preserve multi-byte characters like emojis
         let span;
         for (let i = 0; i < [...toPaste].length; i++) {
-            span = document.createElement("span");
-            span.classList.add("char");
-            // make sure when navigating around the cursor doesn't jump into one of the earlier spans
-            // this causes lots of other issues but we can work around those
-            span.contentEditable = "false";
-            span.innerHTML = [...toPaste][i];
+            span = createCharSpan([...toPaste][i]);
             fragment.appendChild(span);
         }
         range.insertNode(fragment);
@@ -164,5 +170,25 @@ export function addEditorHooks() {
             selection.removeAllRanges();
             selection.addRange(range);
         }
+
+        syncEditors();
     });
+}
+
+function createCharSpan(content: string) {
+    const span = document.createElement("span");
+    // make sure when navigating around the cursor doesn't jump into one of the earlier spans
+    // this causes lots of other issues but we can work around those
+    span.contentEditable = "false";
+    span.classList.add("char");
+    span.style.setProperty("--color", color);
+    span.style.setProperty("--shadow", calculateShadowColor(color));
+    span.textContent = content;
+    return span;
+}
+
+export function syncEditors() {
+    const editor = document.getElementById("editor") as HTMLElement;
+    const editorShadow = document.getElementById("editor-shadow") as HTMLElement;
+    editorShadow.innerHTML = editor.innerHTML;
 }

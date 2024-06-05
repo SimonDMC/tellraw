@@ -1,3 +1,5 @@
+import { syncEditors } from "./editor";
+
 const selection = window.getSelection();
 
 // CTRL + B - bold
@@ -55,4 +57,6 @@ export function style(className: string) {
 
     range.deleteContents();
     range.insertNode(fragment);
+
+    syncEditors();
 }
