@@ -1,9 +1,7 @@
 // TODO:
 // override undo and redo to work with the custom system
-// fix pasting removing shadow and strikethrough
-// add some sort of system to prevent pasting too much text (it explodes)
 
-import { calculateShadowColor } from "./util";
+import { calculateShadowColor, commaFormat } from "./util";
 
 let color = "#FFFFFF";
 
@@ -91,6 +89,19 @@ export function addEditorHooks() {
     // -> if plaintext or invalid HTML, paste as plaintext and also split up into separate spans
     editor.addEventListener("paste", function (event) {
         event.preventDefault();
+
+        const pasteLength = event.clipboardData?.getData("text/plain").length || 0;
+        if (pasteLength > 5000) {
+            let prompt = confirm(
+                `You are pasting over 5,000 characters (${commaFormat(
+                    pasteLength
+                )}). This will probably cause the editor to freeze for a while. Are you SURE?`
+            );
+            if (!prompt) {
+                return;
+            }
+        }
+
         let toPaste = event.clipboardData?.getData("text/html");
 
         // insert at cursor
@@ -156,7 +167,10 @@ export function addEditorHooks() {
         // i'm using [...toPaste] to preserve multi-byte characters like emojis
         let span;
         for (let i = 0; i < [...toPaste].length; i++) {
-            span = createCharSpan([...toPaste][i]);
+            let content = [...toPaste][i];
+            // repair newlines
+            if (content === "\n") content = "<br>";
+            span = createCharSpan(content);
             fragment.appendChild(span);
         }
         range.insertNode(fragment);
@@ -207,6 +221,7 @@ export function syncEditors() {
     let hasStrikethrough = false;
     // take the newline spacing from the main editor since absolute elements mess it up
     // so we have to "recreate" it
+    console.log(editor.children.length);
     Array.from(editor.children).forEach((node) => {
         let yPos = node.getBoundingClientRect().bottom;
         let broken = false;
@@ -223,7 +238,7 @@ export function syncEditors() {
 
         // check for a minimum difference of 6px
         if (yPos - 6 > currentYPos) {
-            if (currentYPos > 0) {
+            if (currentYPos !== 0) {
                 forceBrokenHTML += "<br>";
                 continued = true;
             }

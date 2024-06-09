@@ -16,3 +16,7 @@ export function hexToRgb(hex: string): number[] {
 export function rgbToHex(rgb: number[]): string {
     return "#" + rgb.map((c) => c.toString(16).padStart(2, "0")).join("");
 }
+
+export function commaFormat(num: number): string {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
