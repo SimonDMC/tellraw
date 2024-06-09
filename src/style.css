@@ -29,7 +29,9 @@ body {
 .editor-stack {
   position: absolute;
   font-size: 10em;
-  width: 32em;
+  width: 32.1em;
+  --color: #FFFFFF;
+  --shadow: #3F3F3F;
 }
 
 .editor {
@@ -39,6 +41,11 @@ body {
   border: none;
   white-space: keep-all;
   position: absolute;
+  user-select: none;
+}
+
+#editor {
+  user-select: text;
 }
 
 .editor * {
@@ -46,9 +53,23 @@ body {
   position: relative;
 }
 
+#editor-shadow {
+  white-space: nowrap;
+}
+
 #editor-shadow * {
   color: transparent;
   text-shadow: .1em .1em var(--shadow);
+}
+
+#editor-overlay {
+  pointer-events: none;
+  white-space: nowrap;
+  color: transparent;
+}
+
+#editor-overlay span {
+  display: inline-block;
 }
 
 /* spaces, if the only thing in an element and at the end of a line, don't render
@@ -63,6 +84,11 @@ body {
  manually increase the width of the space */
 .editor .space.bold {
   width: .5em;
+}
+
+/* spaces don't render if they're at the beginning of a line */
+.editor .nl-space {
+  font-size: 0;
 }
 
 .editor .emoji {
@@ -83,9 +109,42 @@ body {
   font-style: italic;
 }
 
-/* known issue: the strikethrough is half a pixel short on both sides
-but fixing that would require some *really* annoying stuff so i think
-i'll leave it like this */
+body:not(.show-strikethrough) #editor-overlay {
+  display: none;
+}
+
+#editor-overlay .strikethrough::before {
+  content: '';
+  border-bottom: .1em solid var(--color);
+  position: absolute;
+  font-size: inherit;
+  margin-bottom: -.1em;
+  padding-left: .05em;
+  padding-right: .05em;
+  margin-left: -.05em;
+  margin-right: -.05em;
+  width: 100%;
+  left: 0;
+  bottom: 0;
+  translate: 0 -.45em;
+}
+
+#editor-shadow .strikethrough::before {
+  content: '';
+  border-bottom: .1em solid var(--shadow);
+  position: absolute;
+  font-size: inherit;
+  margin-bottom: -.1em;
+  padding-left: .05em;
+  padding-right: .05em;
+  margin-left: -.05em;
+  margin-right: -.05em;
+  width: 100%;
+  left: 0;
+  bottom: 0;
+  translate: .1em -.35em;
+}
+
 #editor .underlined {
   border-bottom: .1em solid white;
   margin-bottom: -.1em;
@@ -95,11 +154,13 @@ i'll leave it like this */
   margin-right: -.05em;
 }
 
-#editor .strikethrough {
-  text-decoration-line: underline;
-  text-decoration-thickness: .1em;
-  text-underline-offset: -.35em;
-  text-decoration-skip-ink: none;
+/* yeah idek for this one */
+#editor .underlined.space {
+  width: .5em;
+}
+
+#editor .underlined.space.bold {
+  width: .6em;
 }
 
 #editor-shadow .underlined::after {
@@ -122,7 +183,7 @@ i'll leave it like this */
 /* non-contenteditable spans in a contenteditable surprisingly cause selection problems
 and putting invisible unselectable characters before and after makes it behave normal 
 on chrome */
-#editor span:after, #editor span:before {
+.editor span:after, .editor span:before {
   content: '.';
   pointer-events: none;
   user-select: none;

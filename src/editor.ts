@@ -1,8 +1,7 @@
 // TODO:
 // override undo and redo to work with the custom system
-// fix spaces 1. having the wrong width when underlined 2. having the wrong width when stacked
-// make strikethrough an overlay
-// strikethrough shadow
+// fix pasting removing shadow and strikethrough
+// add some sort of system to prevent pasting too much text (it explodes)
 
 import { calculateShadowColor } from "./util";
 
@@ -21,9 +20,6 @@ export function addEditorHooks() {
         if (event.key === "Enter") char = "<br>";
 
         const span = createCharSpan(char);
-
-        // force spaces to be visible
-        if (char === " ") span.classList.add("space");
 
         // find cursor position
         const selection = window.getSelection();
@@ -145,6 +141,8 @@ export function addEditorHooks() {
                 selection.removeAllRanges();
                 selection.addRange(range);
 
+                console.log("[DEBUG] Pasted as HTML");
+
                 syncEditors();
                 return;
             }
@@ -171,6 +169,8 @@ export function addEditorHooks() {
             selection.addRange(range);
         }
 
+        console.log("[DEBUG] Pasted as plaintext");
+
         syncEditors();
     });
 }
@@ -181,14 +181,76 @@ function createCharSpan(content: string) {
     // this causes lots of other issues but we can work around those
     span.contentEditable = "false";
     span.classList.add("char");
-    span.style.setProperty("--color", color);
-    span.style.setProperty("--shadow", calculateShadowColor(color));
-    span.textContent = content;
+    if (color !== "#FFFFFF") {
+        span.style.setProperty("--color", color);
+        span.style.setProperty("--shadow", calculateShadowColor(color));
+    }
+
+    span.innerHTML = content;
+
+    // force spaces to be visible
+    if (content === " " || content === "&nbsp;") {
+        span.classList.add("space");
+        span.innerHTML = "&nbsp;";
+    }
+
     return span;
 }
 
 export function syncEditors() {
     const editor = document.getElementById("editor") as HTMLElement;
     const editorShadow = document.getElementById("editor-shadow") as HTMLElement;
-    editorShadow.innerHTML = editor.innerHTML;
+    const editorOverlay = document.getElementById("editor-overlay") as HTMLElement;
+    let forceBrokenHTML = "";
+    let continued = false;
+    let currentYPos = 0;
+    let hasStrikethrough = false;
+    // take the newline spacing from the main editor since absolute elements mess it up
+    // so we have to "recreate" it
+    Array.from(editor.children).forEach((node) => {
+        let yPos = node.getBoundingClientRect().bottom;
+        let broken = false;
+
+        // check for strikethrough
+        if (node.classList.contains("strikethrough")) {
+            hasStrikethrough = true;
+        }
+
+        if (node.firstChild?.nodeName == "BR") {
+            currentYPos = yPos;
+            continued = false;
+        }
+
+        // check for a minimum difference of 6px
+        if (yPos - 6 > currentYPos) {
+            if (currentYPos > 0) {
+                forceBrokenHTML += "<br>";
+                continued = true;
+            }
+            currentYPos = yPos;
+            broken = true;
+        }
+
+        if (continued) node.classList.add("cont");
+
+        // don't render spaces if they break the line
+        if (
+            broken &&
+            (node.textContent === " " || node.textContent === " ") &&
+            !node.previousElementSibling?.classList.contains("nl-space")
+        ) {
+            node.classList.add("nl-space");
+        } else {
+            forceBrokenHTML += node.outerHTML;
+        }
+    });
+
+    // don't render strikethrough unless necessary
+    if (hasStrikethrough) {
+        document.body.classList.add("show-strikethrough");
+        editorOverlay.innerHTML = forceBrokenHTML;
+    } else {
+        document.body.classList.remove("show-strikethrough");
+    }
+    editorShadow.innerHTML = forceBrokenHTML;
 }
