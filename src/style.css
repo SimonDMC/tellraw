@@ -8,6 +8,15 @@
   src: url('/MinecraftSevenv2-Game-Bold.ttf') format('truetype');
 }
 
+:root {
+  --text-color: #FFFFFF;
+  --bg-color: #202024;
+  --toolbar-color: #28282b;
+  --editor-color: #37373d;
+  --button-color: #47474d;
+  --button-active-color: #686870;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -17,31 +26,109 @@
 body {
   height: 100svh;
   width: 100vw;
-  display: flex;
-  background-image: url('/bg.png');
-  background-size: 2em;
-  image-rendering: pixelated;
-  justify-content: center;
-  align-items: center;
+  background-color: var(--bg-color);
   font-size: .3em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h1 {
+  font-size: 15em;
+  font-family: 'MinecraftFixed-Bold';
+  font-weight: normal;
+  margin-top: 1.5em;
+  margin-bottom: 2em;
+  color: var(--text-color);
 }
 
 .editor-stack {
-  position: absolute;
-  font-size: 10em;
-  width: 32.1em;
+  font-size: 9em;
+  width: 32.5em;
   --color: #FFFFFF;
   --shadow: #3F3F3F;
+  position: relative;
+  outline: .15em solid var(--toolbar-color);
+  border-radius: .2em;
+  height: 11em;
+  background-color: var(--editor-color);
 }
 
+/* offsetting continued lines has been postponed indefinitely because
+i CANNOT figure out how to do it without recalculating everything and
+making it even less performant than it already is */
+
 .editor {
+  color: var(--color);
   width: 100%;
-  color: white;
+  height: 100%;
+  padding: .2em;
   font-family: 'MinecraftFixed';
   border: none;
   white-space: keep-all;
   position: absolute;
   user-select: none;
+  height: 10em;
+  border-bottom-left-radius: .2em;
+  border-bottom-right-radius: .2em;
+  outline: none;
+}
+
+.toolbar {
+  width: 100%;
+  height: 1em;
+  background-color: var(--toolbar-color);
+  display: flex;
+  align-items: center;
+  gap: .1em;
+}
+
+.toolbar button {
+  background-color: var(--button-color);
+  color: white;
+  font-size: .7em;
+  border: none;
+  font-family: 'MinecraftFixed';
+  width: 1.2em;
+  height: 1.2em;
+  border-radius: .2em;
+  translate: 0 -.1em;
+  cursor: pointer;
+  transition: background-color .1s;
+}
+
+.toolbar button:hover, .toolbar button.active {
+  background-color: var(--button-active-color);
+}
+
+button#bold {
+  font-family: 'MinecraftFixed-Bold';
+}
+
+button#italic {
+  font-style: italic;
+}
+
+button#italic span {
+  display: inline-block;
+  translate: -.1em 0;
+}
+
+button#underline {
+  text-decoration: underline;
+}
+
+button#strikethrough::before {
+  content: '';
+  border-bottom: .1em solid var(--color);
+  position: absolute;
+  font-size: inherit;
+  margin-bottom: .1em;
+  margin-left: .2em;
+  width: calc(100% - .4em);
+  left: 0;
+  bottom: 0;
+  translate: 0 -.45em;
 }
 
 #editor {
@@ -78,6 +165,7 @@ body {
 .editor .space {
   width: .4em;
   display: inline-block;
+  cursor: text;
 }
 
 /* the increase in font spacing doesn't apply to bolded text, so we have to
@@ -145,8 +233,8 @@ body:not(.show-strikethrough) #editor-overlay {
   translate: .1em -.35em;
 }
 
-#editor .underlined {
-  border-bottom: .1em solid white;
+#editor .underline {
+  border-bottom: .1em solid var(--color);
   margin-bottom: -.1em;
   padding-left: .05em;
   padding-right: .05em;
@@ -155,15 +243,15 @@ body:not(.show-strikethrough) #editor-overlay {
 }
 
 /* yeah idek for this one */
-#editor .underlined.space {
+#editor .underline.space {
   width: .5em;
 }
 
-#editor .underlined.space.bold {
+#editor .underline.space.bold {
   width: .6em;
 }
 
-#editor-shadow .underlined::after {
+#editor-shadow .underline::after {
   content: '';
   border-bottom: .1em solid var(--shadow);
   position: absolute;

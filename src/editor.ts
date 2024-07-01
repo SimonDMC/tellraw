@@ -1,9 +1,16 @@
 // TODO:
 // override undo and redo to work with the custom system
+// override arrow keys to work with the custom system
+// temporary style override until selection moved
 
 import { calculateShadowColor, commaFormat } from "./util";
+import { STYLE_BUTTONS, selectionHasClass, style } from "./styling";
 
 let color = "#FFFFFF";
+const selection = window.getSelection();
+
+export let DEBUG = new URLSearchParams(window.location.search).has("debug");
+if (DEBUG) console.log("[DEBUG] Debug mode enabled");
 
 export function addEditorHooks() {
     const editor = document.getElementById("editor") as HTMLElement;
@@ -20,7 +27,6 @@ export function addEditorHooks() {
         const span = createCharSpan(char);
 
         // find cursor position
-        const selection = window.getSelection();
         if (!selection) return;
         if (!(selection.rangeCount > 0)) return;
         const range = selection.getRangeAt(0);
@@ -62,7 +68,6 @@ export function addEditorHooks() {
         const range = document.createRange();
         range.setStartAfter(emoji);
         range.setEndAfter(emoji);
-        const selection = window.getSelection();
         if (!selection) return;
         selection.removeAllRanges();
         selection.addRange(range);
@@ -105,7 +110,6 @@ export function addEditorHooks() {
         let toPaste = event.clipboardData?.getData("text/html");
 
         // insert at cursor
-        const selection = window.getSelection();
         if (!selection) return;
         if (!(selection.rangeCount > 0)) return;
         const range = selection.getRangeAt(0);
@@ -152,7 +156,7 @@ export function addEditorHooks() {
                 selection.removeAllRanges();
                 selection.addRange(range);
 
-                console.log("[DEBUG] Pasted as HTML");
+                if (DEBUG) console.log("[DEBUG] Pasted as HTML");
 
                 syncEditors();
                 return;
@@ -183,10 +187,25 @@ export function addEditorHooks() {
             selection.addRange(range);
         }
 
-        console.log("[DEBUG] Pasted as plaintext");
+        if (DEBUG) console.log("[DEBUG] Pasted as plaintext");
 
         syncEditors();
     });
+
+    // toolbar buttons
+    const toolbar = document.querySelector(".toolbar") as HTMLElement;
+    toolbar.addEventListener("click", function (event) {
+        const target = event.target as HTMLElement;
+        if (!target.id) return;
+        style(target.id);
+    });
+
+    const editorStack = document.querySelector(".editor-stack") as HTMLElement;
+    editorStack.addEventListener("click", refreshToolbar);
+    editorStack.addEventListener("keydown", refreshToolbar);
+    editorStack.addEventListener("keypress", refreshToolbar);
+    editorStack.addEventListener("pointerup", refreshToolbar);
+    editorStack.addEventListener("pointerdown", refreshToolbar);
 }
 
 function createCharSpan(content: string) {
@@ -221,7 +240,6 @@ export function syncEditors() {
     let hasStrikethrough = false;
     // take the newline spacing from the main editor since absolute elements mess it up
     // so we have to "recreate" it
-    console.log(editor.children.length);
     Array.from(editor.children).forEach((node) => {
         let yPos = node.getBoundingClientRect().bottom;
         let broken = false;
@@ -252,7 +270,8 @@ export function syncEditors() {
         if (
             broken &&
             (node.textContent === " " || node.textContent === " ") &&
-            !node.previousElementSibling?.classList.contains("nl-space")
+            node.previousElementSibling &&
+            !node.previousElementSibling.classList.contains("nl-space")
         ) {
             node.classList.add("nl-space");
         } else {
@@ -262,10 +281,24 @@ export function syncEditors() {
 
     // don't render strikethrough unless necessary
     if (hasStrikethrough) {
+        if (DEBUG) console.log("[DEBUG] Showing strikethrough");
+
         document.body.classList.add("show-strikethrough");
         editorOverlay.innerHTML = forceBrokenHTML;
     } else {
         document.body.classList.remove("show-strikethrough");
     }
     editorShadow.innerHTML = forceBrokenHTML;
+}
+
+function refreshToolbar() {
+    if (DEBUG) console.log("[DEBUG] Refreshing toolbar");
+    STYLE_BUTTONS.forEach((button) => {
+        const buttonEl = document.querySelector(`.toolbar #${button.name}`) as HTMLElement;
+        if (selectionHasClass(button.name)) {
+            buttonEl.classList.add("active");
+        } else {
+            buttonEl.classList.remove("active");
+        }
+    });
 }
