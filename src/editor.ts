@@ -1,13 +1,23 @@
 // TODO:
 // override undo and redo to work with the custom system
-// override arrow keys to work with the custom system
-// temporary style override until selection moved
+//  - snapshots every word and style change (not temp override!)
+// try migrate off of contenteditable=false to a system that corrects your cursor every input (i cant even blame firefox on this one)
 
 import { calculateShadowColor, commaFormat } from "./util";
-import { STYLE_BUTTONS, selectionHasClass, style } from "./styling";
+import { STYLE_BUTTONS, getCursorPosition, shouldBeStyled, style, styleMagic } from "./styling";
 
 let color = "#FFFFFF";
+let lastCursorPos: number | null = null;
 const selection = window.getSelection();
+
+export const styleOverride: { [key: string]: boolean | undefined } = {
+    bold: undefined,
+    italic: undefined,
+    underline: undefined,
+    strikethrough: undefined,
+    magic: undefined,
+};
+const lastStyleOverride: { [key: string]: boolean | undefined } = {};
 
 export let DEBUG = new URLSearchParams(window.location.search).has("debug");
 if (DEBUG) console.log("[DEBUG] Debug mode enabled");
@@ -25,6 +35,14 @@ export function addEditorHooks() {
         if (event.key === "Enter") char = "<br>";
 
         const span = createCharSpan(char);
+
+        // apply current formatting styles
+        Object.keys(styleOverride).forEach((style) => {
+            if (shouldBeStyled(style)) span.classList.add(style);
+        });
+        if (shouldBeStyled("magic")) {
+            styleMagic(span);
+        }
 
         // find cursor position
         if (!selection) return;
@@ -291,14 +309,33 @@ export function syncEditors() {
     editorShadow.innerHTML = forceBrokenHTML;
 }
 
-function refreshToolbar() {
+export function refreshToolbar() {
     if (DEBUG) console.log("[DEBUG] Refreshing toolbar");
     STYLE_BUTTONS.forEach((button) => {
         const buttonEl = document.querySelector(`.toolbar #${button.name}`) as HTMLElement;
-        if (selectionHasClass(button.name)) {
-            buttonEl.classList.add("active");
-        } else {
-            buttonEl.classList.remove("active");
-        }
+        requestAnimationFrame(() => {
+            let currentCursorPos = getCursorPosition();
+            // don't update if nothing changed
+            if (
+                currentCursorPos === lastCursorPos &&
+                lastStyleOverride[button.name] === styleOverride[button.name] &&
+                selection!.toString().length === 0
+            )
+                return;
+
+            if (shouldBeStyled(button.name)) {
+                buttonEl.classList.add("active");
+            } else {
+                buttonEl.classList.remove("active");
+            }
+            if (lastStyleOverride[button.name] !== undefined) {
+                styleOverride[button.name] = undefined;
+            }
+            lastStyleOverride[button.name] = styleOverride[button.name];
+        });
+    });
+    requestAnimationFrame(() => {
+        lastCursorPos = getCursorPosition();
+        console.log(lastCursorPos);
     });
 }

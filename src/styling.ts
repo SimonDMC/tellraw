@@ -1,4 +1,4 @@
-import { syncEditors } from "./editor";
+import { syncEditors, styleOverride, refreshToolbar } from "./editor";
 import glyphWidthsRegular from "./glyph_widths_regular.json";
 import glyphWidthsBold from "./glyph_widths_bold.json";
 
@@ -20,7 +20,17 @@ export function addKeybinds() {
 
         for (const button of STYLE_BUTTONS) {
             if (ev.key === button.key) {
-                style(button.name);
+                // if something is selected, style it
+                if (selection.toString().length > 0) {
+                    style(button.name);
+                } else {
+                    // otherwise temporarily override the style
+                    if (styleOverride[button.name] === undefined) {
+                        styleOverride[button.name] = !shouldBeStyled(button.name);
+                    } else {
+                        styleOverride[button.name] = !styleOverride[button.name];
+                    }
+                }
                 ev.preventDefault();
             }
         }
@@ -58,13 +68,7 @@ export function style(className: string) {
             span.classList.add(className);
             // extra attributes for magic
             if (className === "magic") {
-                const originalChar = span.innerText;
-                const unicodePoint = originalChar.codePointAt(0);
-                const glyphWidths = span.classList.contains("bold") ? glyphWidthsBold : (glyphWidthsRegular as any);
-                const width = Object.keys(glyphWidths).find((key) => glyphWidths[key].includes(unicodePoint)) ?? "600";
-
-                if (!span.getAttribute("og-char")) span.setAttribute("og-char", span.innerText);
-                span.setAttribute("char-width", width);
+                styleMagic(span);
             }
             // adjust magic width for bold text
             if (className === "bold" && span.classList.contains("magic")) {
@@ -79,6 +83,17 @@ export function style(className: string) {
     range.insertNode(fragment);
 
     syncEditors();
+    refreshToolbar();
+}
+
+export function styleMagic(span: HTMLSpanElement) {
+    const originalChar = span.innerText;
+    const unicodePoint = originalChar.codePointAt(0);
+    const glyphWidths = span.classList.contains("bold") ? glyphWidthsBold : (glyphWidthsRegular as any);
+    const width = Object.keys(glyphWidths).find((key) => glyphWidths[key].includes(unicodePoint)) ?? "600";
+
+    if (!span.getAttribute("og-char")) span.setAttribute("og-char", span.innerText);
+    span.setAttribute("char-width", width);
 }
 
 export function selectionHasClass(className: string) {
@@ -99,24 +114,30 @@ export function selectionHasClass(className: string) {
     return true;
 }
 
-function getSpanBeforeCursor() {
-    // If there's no selection, return null
+export function getCursorPosition() {
     if (selection!.rangeCount === 0) return null;
 
-    // Get the range
     const range = selection!.getRangeAt(0);
     const offset = range.startOffset;
+    return offset;
+}
 
-    // If the offset is 0, return null
-    if (offset === 0) return null;
+function getSpanBeforeCursor() {
+    const offset = getCursorPosition();
+    if (!offset) return null;
 
     return document.getElementById("editor")!.querySelectorAll(".char")[offset - 1] as HTMLElement;
+}
+
+export function shouldBeStyled(className: string) {
+    if (styleOverride[className] === undefined) return selectionHasClass(className);
+    return styleOverride[className];
 }
 
 function initializeMagic() {
     requestAnimationFrame(magicFrame);
     async function magicFrame() {
-        const spans = document.querySelectorAll("#editor .char.magic");
+        const spans = document.querySelectorAll("#editor .char.magic:not(.space)");
         for (let i = 0; i < spans.length; i++) {
             const span = spans[i] as HTMLElement;
             const width = span.getAttribute("char-width")!;
