@@ -1,10 +1,10 @@
 // TODO:
 // override undo and redo to work with the custom system
 //  - snapshots every word and style change (not temp override!)
-// try migrate off of contenteditable=false to a system that corrects your cursor every input (i cant even blame firefox on this one)
+// fix underlined spaces and strikethrough styling
 
 import { calculateShadowColor, commaFormat } from "./util";
-import { STYLE_BUTTONS, getCursorPosition, shouldBeStyled, style, styleMagic } from "./styling";
+import { STYLE_BUTTONS, getCursorData, pressStyleButton, shouldBeStyled, styleMagic } from "./styling";
 
 let color = "#FFFFFF";
 let lastCursorPos: number | null = null;
@@ -75,10 +75,7 @@ export function addEditorHooks() {
         if (!/\p{Emoji}/u.test(data)) return;
 
         // mark added character with an id so we can find it and put the cursor after it
-        editor.innerHTML = editor.innerHTML.replace(
-            /(?<!">)(\p{Emoji})/gu,
-            "<span class='char emoji' contenteditable='false' id='emoji-loc'>$1</span>"
-        );
+        editor.innerHTML = editor.innerHTML.replace(/(?<!">)(\p{Emoji})/gu, "<span class='char emoji' id='emoji-loc'>$1</span>");
         const emoji = document.getElementById("emoji-loc");
         if (!emoji) return;
 
@@ -215,22 +212,21 @@ export function addEditorHooks() {
     toolbar.addEventListener("click", function (event) {
         const target = event.target as HTMLElement;
         if (!target.id) return;
-        style(target.id);
+        pressStyleButton(target.id);
+        // focus editor
+        editor.focus();
     });
 
     const editorStack = document.querySelector(".editor-stack") as HTMLElement;
-    editorStack.addEventListener("click", refreshToolbar);
-    editorStack.addEventListener("keydown", refreshToolbar);
-    editorStack.addEventListener("keypress", refreshToolbar);
-    editorStack.addEventListener("pointerup", refreshToolbar);
-    editorStack.addEventListener("pointerdown", refreshToolbar);
+    editorStack.addEventListener("click", selectionChanged);
+    editorStack.addEventListener("keydown", selectionChanged);
+    editorStack.addEventListener("keypress", selectionChanged);
+    editorStack.addEventListener("pointerup", selectionChanged);
+    editorStack.addEventListener("pointerdown", selectionChanged);
 }
 
 function createCharSpan(content: string) {
     const span = document.createElement("span");
-    // make sure when navigating around the cursor doesn't jump into one of the earlier spans
-    // this causes lots of other issues but we can work around those
-    span.contentEditable = "false";
     span.classList.add("char");
     if (color !== "#FFFFFF") {
         span.style.setProperty("--color", color);
@@ -309,33 +305,60 @@ export function syncEditors() {
     editorShadow.innerHTML = forceBrokenHTML;
 }
 
+function selectionChanged() {
+    requestAnimationFrame(() => {
+        /* usually navigating around makes the cursor fall into one of the existing
+       spans which is problematic since we need to be able to style individual 
+       characters. i tried messing with contenteditable=false but that caused
+       a plethora of other issues. so instead we just jump out of the span */
+
+        const range = selection!.rangeCount > 0 ? selection!.getRangeAt(0) : null;
+        const span = range?.startContainer.parentElement;
+        if (span) {
+            // if the selection is just a caret, set caret right outside the span
+            if (span.classList.contains("char") && selection!.toString().length === 0) {
+                if (DEBUG) console.log("[DEBUG] Jumping out of span");
+                if (range.startOffset === 1) {
+                    range.setStartAfter(span);
+                    range.setEndAfter(span);
+                } else {
+                    range.setStartBefore(span);
+                    range.setEndBefore(span);
+                }
+            } else {
+                // there may be some remnants of empty spans, remove them
+                const emptySpans = document.querySelectorAll("#editor .char:empty");
+                emptySpans.forEach((span) => span.remove());
+            }
+        }
+
+        // and then also refresh the toolbar
+        refreshToolbar();
+    });
+}
+
 export function refreshToolbar() {
-    if (DEBUG) console.log("[DEBUG] Refreshing toolbar");
     STYLE_BUTTONS.forEach((button) => {
         const buttonEl = document.querySelector(`.toolbar #${button.name}`) as HTMLElement;
-        requestAnimationFrame(() => {
-            let currentCursorPos = getCursorPosition();
-            // don't update if nothing changed
-            if (
-                currentCursorPos === lastCursorPos &&
-                lastStyleOverride[button.name] === styleOverride[button.name] &&
-                selection!.toString().length === 0
-            )
-                return;
+        let currentCursorPos = getCursorData();
+        // don't update if nothing changed
+        if (
+            currentCursorPos === lastCursorPos &&
+            lastStyleOverride[button.name] === styleOverride[button.name] &&
+            selection!.toString().length === 0
+        )
+            return;
 
-            if (shouldBeStyled(button.name)) {
-                buttonEl.classList.add("active");
-            } else {
-                buttonEl.classList.remove("active");
-            }
-            if (lastStyleOverride[button.name] !== undefined) {
-                styleOverride[button.name] = undefined;
-            }
-            lastStyleOverride[button.name] = styleOverride[button.name];
-        });
+        if (shouldBeStyled(button.name)) {
+            buttonEl.classList.add("active");
+        } else {
+            buttonEl.classList.remove("active");
+        }
+        if (lastStyleOverride[button.name] !== undefined) {
+            styleOverride[button.name] = undefined;
+        }
+        lastStyleOverride[button.name] = styleOverride[button.name];
     });
-    requestAnimationFrame(() => {
-        lastCursorPos = getCursorPosition();
-        console.log(lastCursorPos);
-    });
+    if (DEBUG) console.log("[DEBUG] Refreshed toolbar, cursor at", getCursorData(), "style overrides", styleOverride);
+    lastCursorPos = getCursorData();
 }

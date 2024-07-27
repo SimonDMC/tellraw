@@ -267,13 +267,3 @@ body:not(.show-strikethrough) #editor-overlay {
   bottom: 0;
   translate: .1em .1em;
 }
-
-/* non-contenteditable spans in a contenteditable surprisingly cause selection problems
-and putting invisible unselectable characters before and after makes it behave normal 
-on chrome */
-.editor span:after, .editor span:before {
-  content: '.';
-  pointer-events: none;
-  user-select: none;
-  font-size: 0;
-}

@@ -16,36 +16,45 @@ export function addKeybinds() {
     const editor = document.getElementById("editor") as HTMLElement;
     editor.addEventListener("keydown", (ev) => {
         if (!ev.ctrlKey) return;
-        if (!selection) return;
 
         for (const button of STYLE_BUTTONS) {
             if (ev.key === button.key) {
-                // if something is selected, style it
-                if (selection.toString().length > 0) {
-                    style(button.name);
-                } else {
-                    // otherwise temporarily override the style
-                    if (styleOverride[button.name] === undefined) {
-                        styleOverride[button.name] = !shouldBeStyled(button.name);
-                    } else {
-                        styleOverride[button.name] = !styleOverride[button.name];
-                    }
-                }
+                pressStyleButton(button.name);
                 ev.preventDefault();
             }
         }
     });
 }
 
+export function pressStyleButton(styleName: string) {
+    // if something is selected, style it
+    if (!selection) return;
+
+    if (selection.toString().length > 0) {
+        style(styleName);
+    } else {
+        // otherwise temporarily override the style
+        if (styleOverride[styleName] === undefined) {
+            styleOverride[styleName] = !shouldBeStyled(styleName);
+        } else {
+            styleOverride[styleName] = !styleOverride[styleName];
+        }
+    }
+}
+
 // apply a class to selected text
-export function style(className: string) {
+function style(className: string) {
     const range = selection!.getRangeAt(0);
     const fragment = range.cloneContents();
 
+    const children = [...fragment.children];
+    // if the selection only has one character, it's not a part of fragment.children so it needs to be added manually
+    if (children.length === 0) children.push(range.startContainer.parentElement!);
+
     // if every child already has the class, remove it
     if (selectionHasClass(className)) {
-        for (let i = 0; i < fragment.children.length; i++) {
-            const span = fragment.children[i] as HTMLElement;
+        for (let i = 0; i < children.length; i++) {
+            const span = children[i] as HTMLElement;
             span.classList.remove(className);
             // if disabling magic, revert to the original character
             if (className === "magic") {
@@ -63,8 +72,8 @@ export function style(className: string) {
         }
     } else {
         // otherwise add the class to all children
-        for (let i = 0; i < fragment.children.length; i++) {
-            const span = fragment.children[i] as HTMLElement;
+        for (let i = 0; i < children.length; i++) {
+            const span = children[i] as HTMLElement;
             span.classList.add(className);
             // extra attributes for magic
             if (className === "magic") {
@@ -96,34 +105,47 @@ export function styleMagic(span: HTMLSpanElement) {
     span.setAttribute("char-width", width);
 }
 
-export function selectionHasClass(className: string) {
+function selectionHasClass(className: string) {
     if (selection!.rangeCount === 0) return false;
     const range = selection!.getRangeAt(0);
     const fragment = range.cloneContents();
+
+    const children = [...fragment.children];
+    // if the selection only has one character, it's not a part of fragment.children so it needs to be added manually
+    if (children.length === 0) children.push(range.startContainer.parentElement!);
+
     // if the selection is empty, check the span right before the cursor
-    if (fragment.children.length === 0) {
+    if (selection!.toString().length === 0) {
         const span = getSpanBeforeCursor();
 
         if (!span) return false;
         return span.classList.contains(className);
     }
-    for (let i = 0; i < fragment.children.length; i++) {
-        const span = fragment.children[i] as HTMLElement;
+    for (let i = 0; i < children.length; i++) {
+        const span = children[i] as HTMLElement;
         if (!span.classList.contains(className)) return false;
     }
     return true;
 }
 
-export function getCursorPosition() {
+/* this doesn't actually return any useful data, it's a mishmash, but instead
+   uniquely identifies a selection range */
+export function getCursorData() {
     if (selection!.rangeCount === 0) return null;
 
     const range = selection!.getRangeAt(0);
-    const offset = range.startOffset;
-    return offset;
+    let data: any = range.startOffset;
+
+    const length = selection!.toString().length;
+    if (length > 0) {
+        data += `${length}`;
+    }
+
+    return data;
 }
 
 function getSpanBeforeCursor() {
-    const offset = getCursorPosition();
+    const offset = getCursorData();
     if (!offset) return null;
 
     return document.getElementById("editor")!.querySelectorAll(".char")[offset - 1] as HTMLElement;
