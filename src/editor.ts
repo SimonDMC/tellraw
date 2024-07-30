@@ -3,7 +3,7 @@
 // override undo and redo to work with the custom system
 //  - snapshots every word and style change (not temp override!)
 // change emoji system to delete the one inputted and insert a new one
-// fix dashes
+// move magic to overlay because it's currently unselectable
 // maybe granular syncing instead of whole copy every input
 
 import { calculateShadowColor, commaFormat } from "./util";
