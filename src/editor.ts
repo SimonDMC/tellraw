@@ -1,7 +1,10 @@
 // TODO:
+// [future] fix arrow key navigation on ff
 // override undo and redo to work with the custom system
 //  - snapshots every word and style change (not temp override!)
-// fix underlined spaces and strikethrough styling
+// change emoji system to delete the one inputted and insert a new one
+// fix dashes
+// maybe granular syncing instead of whole copy every input
 
 import { calculateShadowColor, commaFormat } from "./util";
 import { STYLE_BUTTONS, getCursorData, pressStyleButton, shouldBeStyled, styleMagic } from "./styling";
@@ -58,6 +61,9 @@ export function addEditorHooks() {
         range.setEndAfter(span);
         selection.removeAllRanges();
         selection.addRange(range);
+
+        // scroll to it
+        span.scrollIntoView();
 
         syncEditors();
     });
@@ -200,6 +206,9 @@ export function addEditorHooks() {
             range.setEndAfter(span);
             selection.removeAllRanges();
             selection.addRange(range);
+
+            // scroll to it
+            span.scrollIntoView();
         }
 
         if (DEBUG) console.log("[DEBUG] Pasted as plaintext");
@@ -218,7 +227,6 @@ export function addEditorHooks() {
     });
 
     const editorStack = document.querySelector(".editor-stack") as HTMLElement;
-    editorStack.addEventListener("click", selectionChanged);
     editorStack.addEventListener("keydown", selectionChanged);
     editorStack.addEventListener("keypress", selectionChanged);
     editorStack.addEventListener("pointerup", selectionChanged);
@@ -249,7 +257,6 @@ export function syncEditors() {
     const editorShadow = document.getElementById("editor-shadow") as HTMLElement;
     const editorOverlay = document.getElementById("editor-overlay") as HTMLElement;
     let forceBrokenHTML = "";
-    let continued = false;
     let currentYPos = 0;
     let hasStrikethrough = false;
     // take the newline spacing from the main editor since absolute elements mess it up
@@ -265,27 +272,32 @@ export function syncEditors() {
 
         if (node.firstChild?.nodeName == "BR") {
             currentYPos = yPos;
-            continued = false;
         }
 
-        // check for a minimum difference of 6px
-        if (yPos - 6 > currentYPos) {
+        // check for a minimum difference of 6px between lines
+        // since this can only check for one line break, if there are multiple, also add a br for all but one
+        if (yPos - 6 > currentYPos || (node.firstChild?.nodeName == "BR" && node.nextElementSibling?.firstChild?.nodeName === "BR")) {
             if (currentYPos !== 0) {
                 forceBrokenHTML += "<br>";
-                continued = true;
             }
             currentYPos = yPos;
             broken = true;
         }
 
-        if (continued) node.classList.add("cont");
+        // remove leftover newline spaces
+        if (node.classList.contains("nl-space") && node.nextElementSibling && node.nextElementSibling.classList.contains("char")) {
+            if (node.nextElementSibling.getBoundingClientRect().bottom - node.getBoundingClientRect().bottom < 6) {
+                node.classList.remove("nl-space");
+            }
+        }
 
         // don't render spaces if they break the line
         if (
             broken &&
             (node.textContent === " " || node.textContent === " ") &&
             node.previousElementSibling &&
-            !node.previousElementSibling.classList.contains("nl-space")
+            !node.previousElementSibling.classList.contains("nl-space") &&
+            node.previousElementSibling.children.length === 0
         ) {
             node.classList.add("nl-space");
         } else {
@@ -293,7 +305,7 @@ export function syncEditors() {
         }
     });
 
-    // don't render strikethrough unless necessary
+    // don't render strikethrough overlay if not in use
     if (hasStrikethrough) {
         if (DEBUG) console.log("[DEBUG] Showing strikethrough");
 

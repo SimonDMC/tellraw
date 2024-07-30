@@ -1,0 +1,48 @@
+.editor .bold {
+    font-weight: normal;
+    font-family: 'MinecraftFixed-Bold';
+}
+
+.editor .italic {
+    font-style: italic;
+}
+
+body:not(.show-strikethrough) #editor-overlay {
+    display: none;
+}
+
+#editor-overlay .strikethrough:not(:empty)::before {
+    content: '';
+    border-bottom: .1em solid var(--color);
+    position: absolute;
+    font-size: inherit;
+    padding-left: .05em;
+    padding-right: .05em;
+    margin-left: -.05em;
+    margin-right: -.05em;
+    width: 100%;
+    left: 0;
+    bottom: 0;
+}
+
+#editor-overlay .strikethrough {
+    margin-bottom: 15px;
+}
+
+#editor .underline {
+    border-bottom: .1em solid var(--color);
+    margin-bottom: -.1em;
+    padding-left: .05em;
+    padding-right: .05em;
+    margin-left: -.05em;
+    margin-right: -.05em;
+}
+
+#editor-shadow .underline {
+    border-bottom: .1em solid var(--shadow);
+    margin-bottom: -.1em;
+    padding-left: .05em;
+    padding-right: .05em;
+    margin-left: -.05em;
+    margin-right: -.05em;
+}

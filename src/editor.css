@@ -61,17 +61,23 @@ making it even less performant than it already is */
 .editor {
   color: var(--color);
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   padding: .2em;
   font-family: 'MinecraftFixed';
   border: none;
-  white-space: keep-all;
   position: absolute;
   user-select: none;
-  height: 10em;
   border-bottom-left-radius: .2em;
   border-bottom-right-radius: .2em;
   outline: none;
+  word-spacing: .1em;
+}
+
+#editor-wrap {
+  height: calc(100% - 1em);
+  overflow-y: scroll;
+  scrollbar-width: none;
+  position: relative;
 }
 
 .toolbar {
@@ -140,13 +146,10 @@ button#strikethrough::before {
   position: relative;
 }
 
-#editor-shadow {
-  white-space: nowrap;
-}
-
 #editor-shadow * {
-  color: transparent;
-  text-shadow: .1em .1em var(--shadow);
+  color: var(--shadow);
+  translate: .1em .1em;
+  display: inline-block;
 }
 
 #editor-overlay {
@@ -159,19 +162,9 @@ button#strikethrough::before {
   display: inline-block;
 }
 
-/* spaces, if the only thing in an element and at the end of a line, don't render
- unless they're non-breaking. they can't be non-breaking because then the text
- doesn't wrap. so we force them to have a fixed width to emulate a space */
+/* without this lines don't break properly */
 .editor .space {
-  width: .4em;
   display: inline-block;
-  cursor: text;
-}
-
-/* the increase in font spacing doesn't apply to bolded text, so we have to
- manually increase the width of the space */
-.editor .space.bold {
-  width: .5em;
 }
 
 /* spaces don't render if they're at the beginning of a line */
@@ -179,91 +172,19 @@ button#strikethrough::before {
   font-size: 0;
 }
 
-.editor .emoji {
+/* .editor .emoji {
   width: calc(.8em / 0.6);
   height: .1em;
   translate: 0 -.15em;
   display: inline-block;
   font-size: .6em;
   scale: 1.2;
-}
+} */
 
-.editor .bold {
-  font-weight: normal;
-  font-family: 'MinecraftFixed-Bold';
-}
-
-.editor .italic {
-  font-style: italic;
-}
-
-body:not(.show-strikethrough) #editor-overlay {
-  display: none;
-}
-
-#editor-overlay .strikethrough::before {
-  content: '';
-  border-bottom: .1em solid var(--color);
-  position: absolute;
-  font-size: inherit;
-  margin-bottom: -.1em;
-  padding-left: .05em;
-  padding-right: .05em;
-  margin-left: -.05em;
-  margin-right: -.05em;
-  width: 100%;
-  left: 0;
-  bottom: 0;
-  translate: 0 -.45em;
-}
-
-#editor-shadow .strikethrough::before {
-  content: '';
-  border-bottom: .1em solid var(--shadow);
-  position: absolute;
-  font-size: inherit;
-  margin-bottom: -.1em;
-  padding-left: .05em;
-  padding-right: .05em;
-  margin-left: -.05em;
-  margin-right: -.05em;
-  width: 100%;
-  left: 0;
-  bottom: 0;
-  translate: .1em -.35em;
-}
-
-#editor .underline {
-  border-bottom: .1em solid var(--color);
-  margin-bottom: -.1em;
-  padding-left: .05em;
-  padding-right: .05em;
-  margin-left: -.05em;
-  margin-right: -.05em;
-}
-
-/* yeah idek for this one */
-#editor .underline.space {
-  width: .5em;
-}
-
-#editor .underline.space.bold {
-  width: .6em;
-}
-
-#editor-shadow .underline::after {
-  content: '';
-  border-bottom: .1em solid var(--shadow);
-  position: absolute;
-  font-size: inherit;
-  margin-bottom: -.1em;
-  padding-left: .05em;
-  padding-right: .05em;
-  margin-left: -.05em;
-  margin-right: -.05em;
-  position: absolute;
-  width: 100%;
-  left: 0;
-  bottom: 0;
-  translate: .1em .1em;
+/* this prevents some character sticking together without a 1px space (?) eg. 14 and ra */
+.editor span::before {
+  content: '.';
+  pointer-events: none;
+  user-select: none;
+  font-size: 0;
 }

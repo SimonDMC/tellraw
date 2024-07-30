@@ -49,7 +49,14 @@ function style(className: string) {
 
     const children = [...fragment.children];
     // if the selection only has one character, it's not a part of fragment.children so it needs to be added manually
-    if (children.length === 0) children.push(range.startContainer.parentElement!);
+    if (children.length === 0) {
+        const anchorNode = selection!.anchorNode! as HTMLElement;
+        if (anchorNode.classList) {
+            children.push(anchorNode);
+        } else {
+            children.push(anchorNode.parentElement!);
+        }
+    }
 
     // if every child already has the class, remove it
     if (selectionHasClass(className)) {
@@ -112,7 +119,15 @@ function selectionHasClass(className: string) {
 
     const children = [...fragment.children];
     // if the selection only has one character, it's not a part of fragment.children so it needs to be added manually
-    if (children.length === 0) children.push(range.startContainer.parentElement!);
+    // if the selection only has one character, it's not a part of fragment.children so it needs to be added manually
+    if (children.length === 0) {
+        const anchorNode = selection!.anchorNode! as HTMLElement;
+        if (anchorNode.classList) {
+            children.push(anchorNode);
+        } else {
+            children.push(anchorNode.parentElement!);
+        }
+    }
 
     // if the selection is empty, check the span right before the cursor
     if (selection!.toString().length === 0) {

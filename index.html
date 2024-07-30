@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="src/style.css">
+  <link rel="stylesheet" href="src/editor.css">
+  <link rel="stylesheet" href="src/styling.css">
   <script src="src/main.ts" type="module" defer></script>
   <title>Tellraw Generator</title>
 </head>
@@ -19,9 +20,11 @@
       <button id="strikethrough" title="Strikethrough (Ctrl + S)">S</button>
       <button id="magic" title="Magic (Ctrl + M)">M</button>
     </div>
-    <div id="editor-shadow" class="editor"></div>
-    <div id="editor" class="editor" contenteditable data-enable-grammarly="false"><br></div>
-    <div id="editor-overlay" class="editor"></div>
+    <div id="editor-wrap">
+      <div id="editor-shadow" class="editor"></div>
+      <div id="editor" class="editor" contenteditable data-enable-grammarly="false"><br></div>
+      <div id="editor-overlay" class="editor"></div>
+    </div>
   </div>
 </body>
 
