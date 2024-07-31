@@ -3,8 +3,13 @@
 // override undo and redo to work with the custom system
 //  - snapshots every word and style change (not temp override!)
 // change emoji system to delete the one inputted and insert a new one
-// move magic to overlay because it's currently unselectable
-// maybe granular syncing instead of whole copy every input
+// figure out a better solution for the invisible magic thing
+//
+// back-burner:
+// offset on continued lines
+// strikethrough shadow
+// non-breaking spaces before line break shouldn't have strikethrough
+// granular syncing instead of whole copy every input (would require a HUGE overhaul)
 
 import { calculateShadowColor, commaFormat } from "./util";
 import { STYLE_BUTTONS, getCursorData, pressStyleButton, shouldBeStyled, styleMagic } from "./styling";
@@ -258,16 +263,16 @@ export function syncEditors() {
     const editorOverlay = document.getElementById("editor-overlay") as HTMLElement;
     let forceBrokenHTML = "";
     let currentYPos = 0;
-    let hasStrikethrough = false;
+    let showOverlay = false;
     // take the newline spacing from the main editor since absolute elements mess it up
     // so we have to "recreate" it
     Array.from(editor.children).forEach((node) => {
         let yPos = node.getBoundingClientRect().bottom;
         let broken = false;
 
-        // check for strikethrough
-        if (node.classList.contains("strikethrough")) {
-            hasStrikethrough = true;
+        // check for overlay-dependant styles
+        if (node.classList.contains("strikethrough") || node.classList.contains("magic")) {
+            showOverlay = true;
         }
 
         if (node.firstChild?.nodeName == "BR") {
@@ -305,15 +310,15 @@ export function syncEditors() {
         }
     });
 
-    // don't render strikethrough overlay if not in use
-    if (hasStrikethrough) {
-        if (DEBUG) console.log("[DEBUG] Showing strikethrough");
-
-        document.body.classList.add("show-strikethrough");
+    // don't render overlay if not in use
+    if (showOverlay) {
+        if (DEBUG) console.log("[DEBUG] Showing overlay");
+        document.body.classList.add("show-overlay");
         editorOverlay.innerHTML = forceBrokenHTML;
     } else {
-        document.body.classList.remove("show-strikethrough");
+        document.body.classList.remove("show-overlay");
     }
+
     editorShadow.innerHTML = forceBrokenHTML;
 }
 
@@ -326,9 +331,9 @@ function selectionChanged() {
 
         const range = selection!.rangeCount > 0 ? selection!.getRangeAt(0) : null;
         const span = range?.startContainer.parentElement;
-        if (span) {
+        if (span && span.classList.contains("char")) {
             // if the selection is just a caret, set caret right outside the span
-            if (span.classList.contains("char") && selection!.toString().length === 0) {
+            if (selection!.toString().length === 0) {
                 if (DEBUG) console.log("[DEBUG] Jumping out of span");
                 if (range.startOffset === 1) {
                     range.setStartAfter(span);
@@ -338,15 +343,66 @@ function selectionChanged() {
                     range.setEndBefore(span);
                 }
             } else {
-                // there may be some remnants of empty spans, remove them
-                const emptySpans = document.querySelectorAll("#editor .char:empty");
-                emptySpans.forEach((span) => span.remove());
+                const children = [...range.commonAncestorContainer.childNodes].filter((node) => range.intersectsNode(node));
+                if (children.length === 0) {
+                    const anchorNode = selection!.anchorNode! as HTMLElement;
+                    if (anchorNode.classList) {
+                        children.push(anchorNode);
+                    } else {
+                        children.push(anchorNode.parentElement!);
+                    }
+                }
+                selectBetweenSpans(children[0] as HTMLElement, children[children.length - 1] as HTMLElement, isSelectionBackwards());
             }
         }
+
+        // there may be some remnants of empty spans, remove them
+        const emptySpans = document.querySelectorAll(".editor .char:empty");
+        emptySpans.forEach((span) => span.remove());
 
         // and then also refresh the toolbar
         refreshToolbar();
     });
+}
+
+export function selectBetweenSpans(start: HTMLElement, end: HTMLElement, backwards: boolean) {
+    const range = selection!.getRangeAt(0);
+    if (backwards) {
+        // find start and end indices
+        let commonAncestor = range.commonAncestorContainer;
+        const childNodesArray = [...range.commonAncestorContainer.childNodes];
+        if (childNodesArray.length === 0) {
+            // single character selected, common ancestor is just the text node
+            childNodesArray.push(...range.commonAncestorContainer.parentElement!.parentElement!.childNodes);
+            commonAncestor = range.commonAncestorContainer.parentElement!.parentElement!;
+        }
+        const startIndex = childNodesArray.indexOf(end) + 1;
+        const endIndex = childNodesArray.indexOf(start);
+
+        range.setStart(commonAncestor, startIndex);
+        range.setEnd(commonAncestor, startIndex);
+        selection!.removeAllRanges();
+        selection!.addRange(range);
+        selection!.extend(commonAncestor, endIndex);
+    } else {
+        range.setStartBefore(start);
+        range.setEndAfter(end);
+    }
+}
+
+// https://stackoverflow.com/a/12652116/19271522
+export function isSelectionBackwards() {
+    var backwards = false;
+    if (window.getSelection) {
+        var sel = window.getSelection();
+        if (!sel!.isCollapsed) {
+            var range = document.createRange();
+            range.setStart(sel!.anchorNode!, sel!.anchorOffset);
+            range.setEnd(sel!.focusNode!, sel!.focusOffset);
+            backwards = range.collapsed;
+        }
+    }
+    return backwards;
 }
 
 export function refreshToolbar() {

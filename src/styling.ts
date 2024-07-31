@@ -1,4 +1,4 @@
-import { syncEditors, styleOverride, refreshToolbar } from "./editor";
+import { syncEditors, styleOverride, refreshToolbar, isSelectionBackwards, selectBetweenSpans } from "./editor";
 import glyphWidthsRegular from "./glyph_widths_regular.json";
 import glyphWidthsBold from "./glyph_widths_bold.json";
 
@@ -45,6 +45,7 @@ export function pressStyleButton(styleName: string) {
 // apply a class to selected text
 function style(className: string) {
     const range = selection!.getRangeAt(0);
+    const isBackwards = isSelectionBackwards();
     const fragment = range.cloneContents();
 
     const children = [...fragment.children];
@@ -65,7 +66,6 @@ function style(className: string) {
             span.classList.remove(className);
             // if disabling magic, revert to the original character
             if (className === "magic") {
-                span.innerText = span.getAttribute("og-char")!;
                 span.removeAttribute("og-char");
                 span.removeAttribute("char-width");
             }
@@ -97,6 +97,7 @@ function style(className: string) {
 
     range.deleteContents();
     range.insertNode(fragment);
+    selectBetweenSpans(children[0] as HTMLElement, children[children.length - 1] as HTMLElement, isBackwards);
 
     syncEditors();
     refreshToolbar();
@@ -180,12 +181,21 @@ function initializeMagic() {
             const width = span.getAttribute("char-width")!;
             const glyphWidths = span.classList.contains("bold") ? glyphWidthsBold : (glyphWidthsRegular as any);
             const randomChar = getRandomChar(width, glyphWidths);
-            span.innerText = randomChar;
 
-            // get child index and clone into shadow
-            const index = Array.from(span.parentElement!.children).indexOf(span);
-            const shadowSpan = document.getElementById("editor-shadow")!.children[index] as HTMLElement;
+            // set in shadow and overlay
+            const index = [...span.parentElement!.children].indexOf(span);
+
+            const shadowChildren = [...document.getElementById("editor-shadow")!.children].filter((child) =>
+                child.classList.contains("char")
+            );
+            const shadowSpan = shadowChildren[index] as HTMLElement;
             shadowSpan.innerText = randomChar;
+
+            const overlayChildren = [...document.getElementById("editor-overlay")!.children].filter((child) =>
+                child.classList.contains("char")
+            );
+            const overlaySpan = overlayChildren[index] as HTMLElement;
+            overlaySpan.innerText = randomChar;
         }
 
         // magic toolbar button

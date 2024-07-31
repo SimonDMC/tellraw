@@ -7,7 +7,7 @@
     font-style: italic;
 }
 
-body:not(.show-strikethrough) #editor-overlay {
+body:not(.show-overlay) #editor-overlay {
     display: none;
 }
 
@@ -27,6 +27,14 @@ body:not(.show-strikethrough) #editor-overlay {
 
 #editor-overlay .strikethrough {
     margin-bottom: 15px;
+}
+
+#editor .magic {
+    -webkit-text-fill-color: transparent;
+}
+
+#editor-overlay .magic {
+    color: var(--color);
 }
 
 #editor .underline {

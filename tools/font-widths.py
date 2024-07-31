@@ -34,6 +34,9 @@ def extract_glyph_widths(ttf_path, output_json_path):
             # Find corresponding Unicode code points
             if glyph_name in reverse_cmap:
                 code_points = reverse_cmap[glyph_name]
+
+                # Exclude soft hyphen because it doesn't render
+                code_points = [code_point for code_point in code_points if code_point != 0xAD]
                 
                 # Group by width
                 if width not in width_to_chars:
