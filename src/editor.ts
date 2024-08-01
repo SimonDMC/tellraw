@@ -1,6 +1,5 @@
 // TODO:
 // [future] ff compat
-//  - fix arrow key navigation
 //  - fix un-magic sometimes leaving stuff behind (??)
 //  - fix emojis going through
 //

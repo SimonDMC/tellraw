@@ -171,20 +171,3 @@ button#strikethrough::before {
 .editor .nl-space {
   font-size: 0;
 }
-
-/* .editor .emoji {
-  width: calc(.8em / 0.6);
-  height: .1em;
-  translate: 0 -.15em;
-  display: inline-block;
-  font-size: .6em;
-  scale: 1.2;
-} */
-
-/* this prevents some character sticking together without a 1px space (?) eg. 14 and ra */
-.editor span::before {
-  content: '.';
-  pointer-events: none;
-  user-select: none;
-  font-size: 0;
-}
