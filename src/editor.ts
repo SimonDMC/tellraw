@@ -1,15 +1,17 @@
 // TODO:
-// [future] fix arrow key navigation on ff
+// [future] ff compat
+//  - fix arrow key navigation
+//  - fix un-magic sometimes leaving stuff behind (??)
+//  - fix emojis going through
 // override undo and redo to work with the custom system
 //  - snapshots every word and style change (not temp override!)
-// change emoji system to delete the one inputted and insert a new one
-// figure out a better solution for the invisible magic thing
 //
 // back-burner:
 // offset on continued lines
 // strikethrough shadow
 // non-breaking spaces before line break shouldn't have strikethrough
 // granular syncing instead of whole copy every input (would require a HUGE overhaul)
+// maybe figure out a better solution for the invisible magic thing but i actually don't mind that it reveals the text on selection
 
 import { calculateShadowColor, commaFormat } from "./util";
 import { STYLE_BUTTONS, getCursorData, pressStyleButton, shouldBeStyled, styleMagic } from "./styling";
@@ -74,7 +76,6 @@ export function addEditorHooks() {
     });
 
     // wrap emojis in separate spans too (they don't trigger keypress events)
-    let cooldown = false;
     editor.addEventListener("input", function (event) {
         // ignore this if the input isn't an emoji
         const data = (event as InputEvent).data;
@@ -85,34 +86,18 @@ export function addEditorHooks() {
         }
         if (!/\p{Emoji}/u.test(data)) return;
 
-        // mark added character with an id so we can find it and put the cursor after it
-        editor.innerHTML = editor.innerHTML.replace(/(?<!">)(\p{Emoji})/gu, "<span class='char emoji' id='emoji-loc'>$1</span>");
-        const emoji = document.getElementById("emoji-loc");
-        if (!emoji) return;
+        console.log("input event", data);
 
-        // move cursor after the emoji
-        const range = document.createRange();
-        range.setStartAfter(emoji);
-        range.setEndAfter(emoji);
-        if (!selection) return;
-        selection.removeAllRanges();
-        selection.addRange(range);
+        const range = selection!.getRangeAt(0);
 
-        // for some reason chrome does a double input event for emojis
-        // so we need to axe the second one
-        if (cooldown) {
-            emoji.remove();
-            setTimeout(() => {
-                cooldown = false;
-                syncEditors();
-            }, 1);
-            return;
-        }
-
-        // remove the id since we don't need it anymore
-        emoji.removeAttribute("id");
-
-        cooldown = true;
+        document.querySelectorAll(".editor .char").forEach((span) => {
+            if ([...span.textContent!].length > 1) {
+                span.textContent = [...span.textContent!][0];
+                range.setStartAfter(span);
+                range.setEndAfter(span);
+                alert("Emojis are not supported. If you really need to add one, copy it elsewhere and paste it in.");
+            }
+        });
     });
 
     // handle pasting
@@ -335,7 +320,7 @@ function selectionChanged() {
             // if the selection is just a caret, set caret right outside the span
             if (selection!.toString().length === 0) {
                 if (DEBUG) console.log("[DEBUG] Jumping out of span");
-                if (range.startOffset === 1) {
+                if (range.startOffset > 0) {
                     range.setStartAfter(span);
                     range.setEndAfter(span);
                 } else {

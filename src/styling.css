@@ -30,7 +30,8 @@ body:not(.show-overlay) #editor-overlay {
 }
 
 #editor .magic {
-    -webkit-text-fill-color: transparent;
+    color: transparent;
+    caret-color: var(--color);
 }
 
 #editor-overlay .magic {
