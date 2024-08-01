@@ -3,8 +3,6 @@
 //  - fix arrow key navigation
 //  - fix un-magic sometimes leaving stuff behind (??)
 //  - fix emojis going through
-// override undo and redo to work with the custom system
-//  - snapshots every word and style change (not temp override!)
 //
 // back-burner:
 // offset on continued lines
@@ -29,6 +27,15 @@ export const styleOverride: { [key: string]: boolean | undefined } = {
 };
 const lastStyleOverride: { [key: string]: boolean | undefined } = {};
 
+type HistoryEntry = {
+    editor: string;
+    selectionStart: number;
+    selectionEnd: number;
+};
+
+let undoStack: HistoryEntry[] = [];
+let redoStack: HistoryEntry[] = [];
+
 export let DEBUG = new URLSearchParams(window.location.search).has("debug");
 if (DEBUG) console.log("[DEBUG] Debug mode enabled");
 
@@ -43,6 +50,11 @@ export function addEditorHooks() {
         let char = String.fromCharCode(event.charCode);
         // fix enter
         if (event.key === "Enter") char = "<br>";
+
+        // take a snapshot for undo/redo
+        if (event.key === " " || event.key === "Enter") {
+            saveSnapshot();
+        }
 
         const span = createCharSpan(char);
 
@@ -75,7 +87,7 @@ export function addEditorHooks() {
         syncEditors();
     });
 
-    // wrap emojis in separate spans too (they don't trigger keypress events)
+    // disallow emojis
     editor.addEventListener("input", function (event) {
         // ignore this if the input isn't an emoji
         const data = (event as InputEvent).data;
@@ -85,8 +97,6 @@ export function addEditorHooks() {
             return;
         }
         if (!/\p{Emoji}/u.test(data)) return;
-
-        console.log("input event", data);
 
         const range = selection!.getRangeAt(0);
 
@@ -98,6 +108,13 @@ export function addEditorHooks() {
                 alert("Emojis are not supported. If you really need to add one, copy it elsewhere and paste it in.");
             }
         });
+    });
+
+    editor.addEventListener("keydown", function (event) {
+        // save snapshot before deleting
+        if (event.key === "Backspace") {
+            saveSnapshot();
+        }
     });
 
     // handle pasting
@@ -414,4 +431,65 @@ export function refreshToolbar() {
     });
     if (DEBUG) console.log("[DEBUG] Refreshed toolbar, cursor at", getCursorData(), "style overrides", styleOverride);
     lastCursorPos = getCursorData();
+}
+
+export function saveSnapshot() {
+    const editor = document.getElementById("editor") as HTMLElement;
+    if (selection!.rangeCount === 0) return;
+    const range = selection!.getRangeAt(0);
+    const selectionStart = range.startOffset;
+    const selectionEnd = range.endOffset;
+    const editorHTML = editor.innerHTML;
+    undoStack.push({ editor: editorHTML, selectionStart, selectionEnd });
+    redoStack = [];
+    if (DEBUG) console.log("[DEBUG] Saved snapshot", undoStack.length, selectionStart, selectionEnd);
+}
+
+export function undo() {
+    const editor = document.getElementById("editor") as HTMLElement;
+    const range = selection!.getRangeAt(0);
+    if (undoStack.length === 0) {
+        // snapshots for empty editor might not be saved so revert to that
+        if (editor.textContent !== "") {
+            redoStack.push({ editor: editor.innerHTML, selectionStart: range.startOffset, selectionEnd: range.endOffset });
+        }
+        editor.innerHTML = "";
+        syncEditors();
+        if (DEBUG) console.log("[DEBUG] Clean undo");
+        return;
+    }
+    const snapshot = undoStack.pop()!;
+    redoStack.push({ editor: editor.innerHTML, selectionStart: range.startOffset, selectionEnd: range.endOffset });
+    editor.innerHTML = snapshot.editor;
+    syncEditors();
+    if (editor.childNodes[snapshot.selectionStart - 1]) {
+        range.setStartAfter(editor.childNodes[snapshot.selectionStart - 1]);
+        range.setEndAfter(editor.childNodes[snapshot.selectionEnd - 1]);
+    } else {
+        range.setStart(editor, 0);
+        range.setEnd(editor, 0);
+    }
+    selection!.removeAllRanges();
+    selection!.addRange(range);
+    if (DEBUG) console.log("[DEBUG] Undo", undoStack.length);
+}
+
+export function redo() {
+    if (redoStack.length === 0) return;
+    const editor = document.getElementById("editor") as HTMLElement;
+    const range = selection!.getRangeAt(0);
+    const snapshot = redoStack.pop()!;
+    undoStack.push({ editor: editor.innerHTML, selectionStart: range.startOffset, selectionEnd: range.endOffset });
+    editor.innerHTML = snapshot.editor;
+    syncEditors();
+    if (editor.childNodes[snapshot.selectionStart - 1]) {
+        range.setStartAfter(editor.childNodes[snapshot.selectionStart - 1]);
+        range.setEndAfter(editor.childNodes[snapshot.selectionEnd - 1]);
+    } else {
+        range.setStart(editor, 0);
+        range.setEnd(editor, 0);
+    }
+    selection!.removeAllRanges();
+    selection!.addRange(range);
+    if (DEBUG) console.log("[DEBUG] Redo", redoStack.length);
 }

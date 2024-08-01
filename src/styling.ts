@@ -1,4 +1,4 @@
-import { syncEditors, styleOverride, refreshToolbar, isSelectionBackwards, selectBetweenSpans } from "./editor";
+import { syncEditors, styleOverride, refreshToolbar, isSelectionBackwards, selectBetweenSpans, undo, redo, saveSnapshot } from "./editor";
 import glyphWidthsRegular from "./glyph_widths_regular.json";
 import glyphWidthsBold from "./glyph_widths_bold.json";
 
@@ -22,6 +22,16 @@ export function addKeybinds() {
                 pressStyleButton(button.name);
                 ev.preventDefault();
             }
+        }
+
+        if (ev.key === "z") {
+            ev.preventDefault();
+            undo();
+        }
+
+        if (ev.key === "y") {
+            ev.preventDefault();
+            redo();
         }
     });
 }
@@ -47,6 +57,8 @@ function style(className: string) {
     const range = selection!.getRangeAt(0);
     const isBackwards = isSelectionBackwards();
     const fragment = range.cloneContents();
+
+    saveSnapshot();
 
     const children = [...fragment.children];
     // if the selection only has one character, it's not a part of fragment.children so it needs to be added manually
