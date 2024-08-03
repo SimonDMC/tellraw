@@ -1,6 +1,5 @@
 // TODO:
-// [future] ff compat
-//  - fix un-magic sometimes leaving stuff behind (??)
+// ff compat
 //  - fix emojis going through
 //
 // back-burner:
@@ -331,30 +330,25 @@ function selectionChanged() {
        a plethora of other issues. so instead we just jump out of the span */
 
         const range = selection!.rangeCount > 0 ? selection!.getRangeAt(0) : null;
-        const span = range?.startContainer.parentElement;
-        if (span && span.classList.contains("char")) {
+        const container = range?.startContainer.parentElement;
+        if (container && container.classList.contains("char")) {
             // if the selection is just a caret, set caret right outside the span
             if (selection!.toString().length === 0) {
                 if (DEBUG) console.log("[DEBUG] Jumping out of span");
                 if (range.startOffset > 0) {
-                    range.setStartAfter(span);
-                    range.setEndAfter(span);
+                    range.setStartAfter(container);
+                    range.setEndAfter(container);
                 } else {
-                    range.setStartBefore(span);
-                    range.setEndBefore(span);
+                    range.setStartBefore(container);
+                    range.setEndBefore(container);
                 }
             } else {
-                const children = [...range.commonAncestorContainer.childNodes].filter((node) => range.intersectsNode(node));
-                if (children.length === 0) {
-                    const anchorNode = selection!.anchorNode! as HTMLElement;
-                    if (anchorNode.classList) {
-                        children.push(anchorNode);
-                    } else {
-                        children.push(anchorNode.parentElement!);
-                    }
-                }
-                selectBetweenSpans(children[0] as HTMLElement, children[children.length - 1] as HTMLElement, isSelectionBackwards());
+                // chrome
+                fixMultiCharacterSelection(range);
             }
+        } else if (container && container.id === "editor-wrap" && selection!.toString().length > 0) {
+            // firefox
+            fixMultiCharacterSelection(range);
         }
 
         // there may be some remnants of empty spans, remove them
@@ -366,18 +360,38 @@ function selectionChanged() {
     });
 }
 
+function fixMultiCharacterSelection(range: Range) {
+    const children = [...range.commonAncestorContainer.childNodes].filter((node) => range.intersectsNode(node));
+    if (children.length === 0) {
+        const anchorNode = selection!.anchorNode! as HTMLElement;
+        if (anchorNode.classList) {
+            children.push(anchorNode);
+        } else {
+            children.push(anchorNode.parentElement!);
+        }
+    }
+    selectBetweenSpans(children[0] as HTMLElement, children[children.length - 1] as HTMLElement, isSelectionBackwards());
+}
+
 export function selectBetweenSpans(start: HTMLElement, end: HTMLElement, backwards: boolean) {
     const range = selection!.getRangeAt(0);
+
+    // find start and end indices
+    let commonAncestor = range.commonAncestorContainer;
+    const childNodesArray = [...range.commonAncestorContainer.childNodes];
+    if (childNodesArray.length === 0) {
+        // single character selected, common ancestor is just the text node
+        childNodesArray.push(...range.commonAncestorContainer.parentElement!.parentElement!.childNodes);
+        commonAncestor = range.commonAncestorContainer.parentElement!.parentElement!;
+    }
+
+    // we are already selected correctly!
+    if (range.startContainer === range.endContainer) return;
+
     if (backwards) {
-        // find start and end indices
-        let commonAncestor = range.commonAncestorContainer;
-        const childNodesArray = [...range.commonAncestorContainer.childNodes];
-        if (childNodesArray.length === 0) {
-            // single character selected, common ancestor is just the text node
-            childNodesArray.push(...range.commonAncestorContainer.parentElement!.parentElement!.childNodes);
-            commonAncestor = range.commonAncestorContainer.parentElement!.parentElement!;
-        }
-        const startIndex = childNodesArray.indexOf(end) + 1;
+        // why does this silly browser make me do this
+        const firefoxOffset = range.startOffset;
+        const startIndex = childNodesArray.indexOf(end) + 1 + firefoxOffset;
         const endIndex = childNodesArray.indexOf(start);
 
         range.setStart(commonAncestor, startIndex);
@@ -386,8 +400,14 @@ export function selectBetweenSpans(start: HTMLElement, end: HTMLElement, backwar
         selection!.addRange(range);
         selection!.extend(commonAncestor, endIndex);
     } else {
-        range.setStartBefore(start);
-        range.setEndAfter(end);
+        const firefoxOffset = range.endOffset;
+        const startIndex = childNodesArray.indexOf(start);
+        const endIndex = childNodesArray.indexOf(end) + firefoxOffset;
+
+        range.setStart(commonAncestor, startIndex);
+        range.setEnd(commonAncestor, endIndex);
+        selection!.removeAllRanges();
+        selection!.addRange(range);
     }
 }
 
