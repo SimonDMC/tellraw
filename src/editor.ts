@@ -1,6 +1,8 @@
 // TODO:
-// ff compat
-//  - fix emojis going through
+// firefox compat
+//  - line height
+//  - caret ends up in wrong position when navigating to end of line
+// take history snapshot before pasting
 //
 // back-burner:
 // offset on continued lines
@@ -89,6 +91,7 @@ export function addEditorHooks() {
     editor.addEventListener("input", function (event) {
         // ignore this if the input isn't an emoji
         const data = (event as InputEvent).data;
+
         if (!data) {
             // still useful for copying over the contents
             syncEditors();
@@ -98,11 +101,20 @@ export function addEditorHooks() {
 
         const range = selection!.getRangeAt(0);
 
+        // chrome - emojis end up in a span
         document.querySelectorAll(".editor .char").forEach((span) => {
             if ([...span.textContent!].length > 1) {
                 span.textContent = [...span.textContent!][0];
                 range.setStartAfter(span);
                 range.setEndAfter(span);
+                alert("Emojis are not supported. If you really need to add one, copy it elsewhere and paste it in.");
+            }
+        });
+
+        // firefox - emojis end up outside of spans
+        document.getElementById("editor")?.childNodes.forEach((node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                node.remove();
                 alert("Emojis are not supported. If you really need to add one, copy it elsewhere and paste it in.");
             }
         });
@@ -200,7 +212,12 @@ export function addEditorHooks() {
             let content = [...toPaste][i];
             // repair newlines
             if (content === "\n") content = "<br>";
+
             span = createCharSpan(content);
+            if (/\p{Emoji}/u.test(content)) {
+                span.classList.add("emoji");
+            }
+
             fragment.appendChild(span);
         }
         range.insertNode(fragment);
@@ -215,6 +232,10 @@ export function addEditorHooks() {
             // scroll to it
             span.scrollIntoView();
         }
+
+        // remove empty spans
+        const emptySpans = document.querySelectorAll(".editor .char:empty");
+        emptySpans.forEach((span) => span.remove());
 
         if (DEBUG) console.log("[DEBUG] Pasted as plaintext");
 

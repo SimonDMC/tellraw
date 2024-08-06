@@ -152,6 +152,11 @@ button#strikethrough::before {
   display: inline-block;
 }
 
+#editor-shadow .emoji {
+  translate: 0 0;
+  text-shadow: .1em .1em var(--shadow);
+}
+
 #editor-overlay {
   pointer-events: none;
   white-space: nowrap;
