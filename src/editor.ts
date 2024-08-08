@@ -1,15 +1,19 @@
 // TODO:
-// firefox compat
-//  - line height
-//  - caret ends up in wrong position when navigating to end of line
-// take history snapshot before pasting
+// try unifont as backup
 //
 // back-burner:
 // offset on continued lines
 // strikethrough shadow
 // non-breaking spaces before line break shouldn't have strikethrough
 // granular syncing instead of whole copy every input (would require a HUGE overhaul)
-// maybe figure out a better solution for the invisible magic thing but i actually don't mind that it reveals the text on selection
+// maybe figure out a better solution for the invisible magic thing but i actually don't
+//   mind that it reveals the text on selection
+// firefox compat - arrow keys over spaces forces double input
+//  - this seems really tough to fix because its not a pseudoelement issue and would
+//    require re-implementing arrow keys which doesn't sound that bad on its own but
+//    considering ctrl, selection enlarging and shrinking (forwards and backwards!)
+//    it just doesn't sound worth it
+// fix pasting a large amount of text messing up shadow
 
 import { calculateShadowColor, commaFormat } from "./util";
 import { STYLE_BUTTONS, getCursorData, pressStyleButton, shouldBeStyled, styleMagic } from "./styling";
@@ -71,6 +75,15 @@ export function addEditorHooks() {
         if (!(selection.rangeCount > 0)) return;
         const range = selection.getRangeAt(0);
 
+        /* sometimes chars can be inserted into another span which is problematic,
+           notably when navigating before a line break in firefox or even in other
+           browsers when navigating around and typing characters rapidly */
+        const ancestor = range.commonAncestorContainer as HTMLElement;
+        if (ancestor.classList.contains("char")) {
+            range.setStartBefore(ancestor);
+            range.setEndBefore(ancestor);
+        }
+
         // insert at cursor
         range.deleteContents();
         range.insertNode(span);
@@ -81,8 +94,12 @@ export function addEditorHooks() {
         selection.removeAllRanges();
         selection.addRange(range);
 
-        // scroll to it
-        span.scrollIntoView();
+        // scroll to it if necessary
+        const editorBoundingRect = document.getElementById("editor-wrap")!.getBoundingClientRect();
+        const spanBoundingRect = span.getBoundingClientRect();
+        if (spanBoundingRect.top < editorBoundingRect.top || spanBoundingRect.bottom > editorBoundingRect.bottom) {
+            span.scrollIntoView();
+        }
 
         syncEditors();
     });
@@ -94,7 +111,7 @@ export function addEditorHooks() {
 
         if (!data) {
             // still useful for copying over the contents
-            syncEditors();
+            requestAnimationFrame(() => syncEditors());
             return;
         }
         if (!/\p{Emoji}/u.test(data)) return;
@@ -132,6 +149,8 @@ export function addEditorHooks() {
     // -> if plaintext or invalid HTML, paste as plaintext and also split up into separate spans
     editor.addEventListener("paste", function (event) {
         event.preventDefault();
+
+        saveSnapshot();
 
         const pasteLength = event.clipboardData?.getData("text/plain").length || 0;
         if (pasteLength > 5000) {
@@ -257,6 +276,17 @@ export function addEditorHooks() {
     editorStack.addEventListener("keypress", selectionChanged);
     editorStack.addEventListener("pointerup", selectionChanged);
     editorStack.addEventListener("pointerdown", selectionChanged);
+
+    preventSpaceNewlines();
+}
+
+function preventSpaceNewlines() {
+    // remove all "space" newline chars because firefox just be doing whatever
+    requestAnimationFrame(() => {
+        const wrongSpaces = document.querySelectorAll(".editor .space br");
+        wrongSpaces.forEach((span) => span.parentElement!.remove());
+        preventSpaceNewlines();
+    });
 }
 
 function createCharSpan(content: string) {
@@ -302,7 +332,11 @@ export function syncEditors() {
 
         // check for a minimum difference of 6px between lines
         // since this can only check for one line break, if there are multiple, also add a br for all but one
-        if (yPos - 6 > currentYPos || (node.firstChild?.nodeName == "BR" && node.nextElementSibling?.firstChild?.nodeName === "BR")) {
+        const isNonbreakingSpace = node.classList.contains("space") && !node.previousElementSibling;
+        if (
+            (yPos - 16 > currentYPos && !isNonbreakingSpace) ||
+            (node.firstChild?.nodeName == "BR" && node.nextElementSibling?.firstChild?.nodeName === "BR")
+        ) {
             if (currentYPos !== 0) {
                 forceBrokenHTML += "<br>";
             }
@@ -352,6 +386,7 @@ function selectionChanged() {
 
         const range = selection!.rangeCount > 0 ? selection!.getRangeAt(0) : null;
         const container = range?.startContainer.parentElement;
+
         if (container && container.classList.contains("char")) {
             // if the selection is just a caret, set caret right outside the span
             if (selection!.toString().length === 0) {
@@ -398,21 +433,13 @@ export function selectBetweenSpans(start: HTMLElement, end: HTMLElement, backwar
     const range = selection!.getRangeAt(0);
 
     // find start and end indices
-    let commonAncestor = range.commonAncestorContainer;
-    const childNodesArray = [...range.commonAncestorContainer.childNodes];
-    if (childNodesArray.length === 0) {
-        // single character selected, common ancestor is just the text node
-        childNodesArray.push(...range.commonAncestorContainer.parentElement!.parentElement!.childNodes);
-        commonAncestor = range.commonAncestorContainer.parentElement!.parentElement!;
-    }
+    const commonAncestor = document.getElementById("editor")!;
+    const childNodesArray = [...commonAncestor.childNodes];
 
-    // we are already selected correctly!
-    if (range.startContainer === range.endContainer) return;
+    if ((range.commonAncestorContainer as HTMLElement).id !== "editor") return;
 
     if (backwards) {
-        // why does this silly browser make me do this
-        const firefoxOffset = range.startOffset;
-        const startIndex = childNodesArray.indexOf(end) + 1 + firefoxOffset;
+        const startIndex = childNodesArray.indexOf(end) + 1;
         const endIndex = childNodesArray.indexOf(start);
 
         range.setStart(commonAncestor, startIndex);
@@ -421,9 +448,8 @@ export function selectBetweenSpans(start: HTMLElement, end: HTMLElement, backwar
         selection!.addRange(range);
         selection!.extend(commonAncestor, endIndex);
     } else {
-        const firefoxOffset = range.endOffset;
         const startIndex = childNodesArray.indexOf(start);
-        const endIndex = childNodesArray.indexOf(end) + firefoxOffset;
+        const endIndex = childNodesArray.indexOf(end) + 1;
 
         range.setStart(commonAncestor, startIndex);
         range.setEnd(commonAncestor, endIndex);

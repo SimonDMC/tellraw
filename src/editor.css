@@ -50,7 +50,7 @@ h1 {
   position: relative;
   outline: .15em solid var(--toolbar-color);
   border-radius: .2em;
-  height: 11em;
+  height: 10.3em;
   background-color: var(--editor-color);
 }
 
@@ -71,6 +71,7 @@ making it even less performant than it already is */
   border-bottom-right-radius: .2em;
   outline: none;
   word-spacing: .1em;
+  line-height: .9em;
 }
 
 #editor-wrap {
@@ -118,6 +119,7 @@ button#italic {
 button#italic span {
   display: inline-block;
   translate: -.1em 0;
+  pointer-events: none;
 }
 
 button#underline {
@@ -141,6 +143,7 @@ button#strikethrough::before {
   user-select: text;
 }
 
+/* strikethrough */
 .editor * {
   line-height: .2em;
   position: relative;
