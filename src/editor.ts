@@ -1,5 +1,7 @@
 // TODO:
 // try unifont as backup
+// color color button based on selection
+// temp color override
 //
 // back-burner:
 // offset on continued lines
@@ -16,20 +18,11 @@
 // fix pasting a large amount of text messing up shadow
 
 import { calculateShadowColor, commaFormat } from "./util";
-import { STYLE_BUTTONS, getCursorData, pressStyleButton, shouldBeStyled, styleMagic } from "./styling";
+import { shouldBeStyled, styleMagic } from "./styling";
+import { refreshToolbar, styleOverride } from "./toolbar";
 
 let color = "#FFFFFF";
-let lastCursorPos: number | null = null;
 const selection = window.getSelection();
-
-export const styleOverride: { [key: string]: boolean | undefined } = {
-    bold: undefined,
-    italic: undefined,
-    underline: undefined,
-    strikethrough: undefined,
-    magic: undefined,
-};
-const lastStyleOverride: { [key: string]: boolean | undefined } = {};
 
 type HistoryEntry = {
     editor: string;
@@ -185,7 +178,7 @@ export function addEditorHooks() {
                     node.removeChild(node.children[0]);
                     continue;
                 }
-                child = node.children[0];
+                child = node.children[0] as HTMLElement;
                 if (child.nodeName !== "SPAN" || !child.classList.contains("char")) {
                     validPaste = false;
                     break;
@@ -200,8 +193,24 @@ export function addEditorHooks() {
                     child.removeChild(child.childNodes[0]);
                 }
 
-                // reset all styles
+                // reset all irrelevant styles
+                const style = child.getAttribute("style");
+                console.log(style);
+
+                let color, shadow;
+                /* i don't think there's a better way of doing this, you can't
+                   use getComputedStyle because the style isn't computed yet,
+                   it's just from the import */
+                if (style) {
+                    color = style.match(/--color:\s*([^;]+)/)?.[1];
+                    shadow = style.match(/--shadow:\s*([^;]+)/)?.[1];
+                }
+
                 child.removeAttribute("style");
+
+                if (color) child.style.setProperty("--color", color);
+                if (shadow) child.style.setProperty("--shadow", shadow);
+
                 fragment.appendChild(child);
             }
             if (validPaste && child) {
@@ -261,21 +270,11 @@ export function addEditorHooks() {
         syncEditors();
     });
 
-    // toolbar buttons
-    const toolbar = document.querySelector(".toolbar") as HTMLElement;
-    toolbar.addEventListener("click", function (event) {
-        const target = event.target as HTMLElement;
-        if (!target.id) return;
-        pressStyleButton(target.id);
-        // focus editor
-        editor.focus();
-    });
-
     const editorStack = document.querySelector(".editor-stack") as HTMLElement;
     editorStack.addEventListener("keydown", selectionChanged);
     editorStack.addEventListener("keypress", selectionChanged);
-    editorStack.addEventListener("pointerup", selectionChanged);
-    editorStack.addEventListener("pointerdown", selectionChanged);
+    editorStack.addEventListener("pointerdown", mouseDownSelectionChanged);
+    editorStack.addEventListener("pointerup", mouseUpSelectionChanged);
 
     preventSpaceNewlines();
 }
@@ -377,6 +376,43 @@ export function syncEditors() {
     editorShadow.innerHTML = forceBrokenHTML;
 }
 
+let mouseX: number | null = null;
+let mouseY: number | null = null;
+let selectionExists = false;
+function mouseDownSelectionChanged(e: PointerEvent) {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    selectionExists = selection!.toString().length > 0;
+    selectionChanged();
+}
+
+function mouseUpSelectionChanged(e: PointerEvent) {
+    /* this whole thing is necessary so that when you click during a selection
+       it clears it and sets the cursor properly. selectionExists check is to
+       re-enable double click to select word 
+       
+       triple click to select paragraph doesn't work but that would be
+       non-trivial to implement and i'm not sure how i would go about it */
+    if (
+        (e.target as HTMLElement).classList.contains("char") &&
+        mouseX == e.clientX &&
+        mouseY == e.clientY &&
+        mouseX != null &&
+        mouseY != null &&
+        selectionExists
+    ) {
+        // set caret at mouse position
+        selection!.removeAllRanges();
+        // this only works with chrome 128+ which is super recent rn
+        const caretPos = document.caretPositionFromPoint(e.clientX, e.clientY);
+        const range = document.createRange();
+        range.setStart(caretPos.offsetNode, caretPos.offset);
+        range.setEnd(caretPos.offsetNode, caretPos.offset);
+        selection!.addRange(range);
+    }
+    selectionChanged();
+}
+
 function selectionChanged() {
     requestAnimationFrame(() => {
         /* usually navigating around makes the cursor fall into one of the existing
@@ -429,9 +465,7 @@ function fixMultiCharacterSelection(range: Range) {
     selectBetweenSpans(children[0] as HTMLElement, children[children.length - 1] as HTMLElement, isSelectionBackwards());
 }
 
-export function selectBetweenSpans(start: HTMLElement, end: HTMLElement, backwards: boolean) {
-    const range = selection!.getRangeAt(0);
-
+export function selectBetweenSpans(start: HTMLElement, end: HTMLElement, backwards: boolean, range: Range = selection!.getRangeAt(0)) {
     // find start and end indices
     const commonAncestor = document.getElementById("editor")!;
     const childNodesArray = [...commonAncestor.childNodes];
@@ -471,32 +505,6 @@ export function isSelectionBackwards() {
         }
     }
     return backwards;
-}
-
-export function refreshToolbar() {
-    STYLE_BUTTONS.forEach((button) => {
-        const buttonEl = document.querySelector(`.toolbar #${button.name}`) as HTMLElement;
-        let currentCursorPos = getCursorData();
-        // don't update if nothing changed
-        if (
-            currentCursorPos === lastCursorPos &&
-            lastStyleOverride[button.name] === styleOverride[button.name] &&
-            selection!.toString().length === 0
-        )
-            return;
-
-        if (shouldBeStyled(button.name)) {
-            buttonEl.classList.add("active");
-        } else {
-            buttonEl.classList.remove("active");
-        }
-        if (lastStyleOverride[button.name] !== undefined) {
-            styleOverride[button.name] = undefined;
-        }
-        lastStyleOverride[button.name] = styleOverride[button.name];
-    });
-    if (DEBUG) console.log("[DEBUG] Refreshed toolbar, cursor at", getCursorData(), "style overrides", styleOverride);
-    lastCursorPos = getCursorData();
 }
 
 export function saveSnapshot() {

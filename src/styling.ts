@@ -1,66 +1,23 @@
-import { syncEditors, styleOverride, refreshToolbar, isSelectionBackwards, selectBetweenSpans, undo, redo, saveSnapshot } from "./editor";
+import { syncEditors, isSelectionBackwards, selectBetweenSpans, saveSnapshot } from "./editor";
 import glyphWidthsRegular from "./glyph_widths_regular.json";
 import glyphWidthsBold from "./glyph_widths_bold.json";
+import { refreshToolbar, SelectionRange, styleOverride } from "./toolbar";
+import { calculateShadowColor } from "./util";
 
 const selection = window.getSelection();
 
-export const STYLE_BUTTONS = [
-    { name: "bold", key: "b" },
-    { name: "italic", key: "i" },
-    { name: "underline", key: "u" },
-    { name: "strikethrough", key: "s" },
-    { name: "magic", key: "m" },
-];
-
-export function addKeybinds() {
-    const editor = document.getElementById("editor") as HTMLElement;
-    editor.addEventListener("keydown", (ev) => {
-        if (!ev.ctrlKey) return;
-
-        for (const button of STYLE_BUTTONS) {
-            if (ev.key === button.key) {
-                pressStyleButton(button.name);
-                ev.preventDefault();
-            }
-        }
-
-        if (ev.key === "z") {
-            ev.preventDefault();
-            undo();
-        }
-
-        if (ev.key === "y") {
-            ev.preventDefault();
-            redo();
-        }
-    });
-}
-
-export function pressStyleButton(styleName: string) {
-    // if something is selected, style it
-    if (!selection) return;
-
-    if (selection.toString().length > 0) {
-        style(styleName);
-    } else {
-        // otherwise temporarily override the style
-        if (styleOverride[styleName] === undefined) {
-            styleOverride[styleName] = !shouldBeStyled(styleName);
-        } else {
-            styleOverride[styleName] = !styleOverride[styleName];
-        }
-    }
-}
-
 // apply a class to selected text
-function style(className: string) {
+export function style(className: string) {
     const range = selection!.getRangeAt(0);
     const isBackwards = isSelectionBackwards();
     const fragment = range.cloneContents();
 
+    console.log(range);
+
     saveSnapshot();
 
     const children = [...fragment.children];
+
     // if the selection only has one character, it's not a part of fragment.children so it needs to be added manually
     if (children.length === 0) {
         const anchorNode = selection!.anchorNode! as HTMLElement;
@@ -110,6 +67,48 @@ function style(className: string) {
     range.deleteContents();
     range.insertNode(fragment);
     selectBetweenSpans(children[0] as HTMLElement, children[children.length - 1] as HTMLElement, isBackwards);
+
+    syncEditors();
+    refreshToolbar();
+}
+
+export function colorize(color: string, range: SelectionRange | null) {
+    if (!range) {
+        const realRange = selection!.getRangeAt(0);
+        range = {
+            commonAncestorContainer: realRange.commonAncestorContainer,
+            startOffset: realRange.startOffset,
+            endOffset: realRange.endOffset,
+            isBackwards: isSelectionBackwards(),
+        };
+    }
+
+    saveSnapshot();
+
+    const children = Array.from((range.commonAncestorContainer as HTMLElement).children).slice(range.startOffset, range.endOffset);
+
+    // if the selection only has one character, it's not a part of fragment.children so it needs to be added manually
+    if (children.length === 0) {
+        const anchorNode = selection!.anchorNode! as HTMLElement;
+        if (anchorNode.classList) {
+            children.push(anchorNode);
+        } else {
+            children.push(anchorNode.parentElement!);
+        }
+    }
+
+    // set color of all children
+    for (let i = 0; i < children.length; i++) {
+        const span = children[i] as HTMLElement;
+        span.style.setProperty("--color", color);
+        span.style.setProperty("--shadow", calculateShadowColor(color));
+    }
+
+    const realRange = document.createRange();
+    realRange.setStart(range.commonAncestorContainer, range.startOffset);
+    realRange.setEnd(range.commonAncestorContainer, range.endOffset);
+
+    selectBetweenSpans(children[0] as HTMLElement, children[children.length - 1] as HTMLElement, range.isBackwards, realRange);
 
     syncEditors();
     refreshToolbar();

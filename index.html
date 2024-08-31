@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="src/editor.css">
   <link rel="stylesheet" href="src/styling.css">
+  <link rel="stylesheet" href="src/toolbar.css">
   <script src="src/main.ts" type="module" defer></script>
   <title>Tellraw Generator</title>
 </head>
@@ -19,12 +20,32 @@
       <button id="underline" title="Underline (Ctrl + U)">U</button>
       <button id="strikethrough" title="Strikethrough (Ctrl + S)">S</button>
       <button id="magic" title="Magic (Ctrl + M)">M</button>
+      <div class="separator"></div>
+      <button id="color">A</button>
     </div>
     <div id="editor-wrap">
       <div id="editor-shadow" class="editor"></div>
       <div id="editor" class="editor" contenteditable data-enable-grammarly="false"><br></div>
       <div id="editor-overlay" class="editor"></div>
     </div>
+  </div>
+  <div id="color-popover">
+    <div class="color-option" style="--color: #AA0000"></div>
+    <div class="color-option" style="--color: #FF5555"></div>
+    <div class="color-option" style="--color: #FFAA00"></div>
+    <div class="color-option" style="--color: #FFFF55"></div>
+    <div class="color-option" style="--color: #00AA00"></div>
+    <div class="color-option" style="--color: #55FF55"></div>
+    <div class="color-option" style="--color: #55FFFF"></div>
+    <div class="color-option" style="--color: #00AAAA"></div>
+    <div class="color-option" style="--color: #0000AA"></div>
+    <div class="color-option" style="--color: #5555FF"></div>
+    <div class="color-option" style="--color: #FF55FF"></div>
+    <div class="color-option" style="--color: #AA00AA"></div>
+    <div class="color-option" style="--color: #FFFFFF"></div>
+    <div class="color-option" style="--color: #AAAAAA"></div>
+    <div class="color-option" style="--color: #555555"></div>
+    <div class="color-option" style="--color: #000000"></div>
   </div>
 </body>
 
