@@ -8,6 +8,11 @@
   src: url('/MinecraftSevenv2-Game-Bold.ttf') format('truetype');
 }
 
+@font-face {
+  font-family: 'Unifont';
+  src: url('/unifont.otf') format('opentype');
+}
+
 :root {
   --text-color: #FFFFFF;
   --bg-color: #202024;
@@ -62,7 +67,7 @@ making it even less performant than it already is */
   width: 100%;
   min-height: 100%;
   padding: .2em;
-  font-family: 'MinecraftFixed';
+  font-family: 'MinecraftFixed', 'Unifont';
   border: none;
   position: absolute;
   user-select: none;
