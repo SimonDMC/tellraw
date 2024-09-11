@@ -8,14 +8,15 @@ export type SelectionRange = {
     isBackwards: boolean;
 };
 
-export const styleOverride: { [key: string]: boolean | undefined } = {
+export const styleOverride: { [key: string]: boolean | string | undefined } = {
     bold: undefined,
     italic: undefined,
     underline: undefined,
     strikethrough: undefined,
     magic: undefined,
+    color: undefined,
 };
-export const lastStyleOverride: { [key: string]: boolean | undefined } = {};
+export const lastStyleOverride: { [key: string]: boolean | string | undefined } = {};
 
 let lastCursorPos: number | null = null;
 const selection = window.getSelection();

@@ -129,7 +129,6 @@ function selectionHasClass(className: string) {
 
     const children = [...fragment.children];
     // if the selection only has one character, it's not a part of fragment.children so it needs to be added manually
-    // if the selection only has one character, it's not a part of fragment.children so it needs to be added manually
     if (children.length === 0) {
         const anchorNode = selection!.anchorNode! as HTMLElement;
         if (anchorNode.classList) {
@@ -179,6 +178,17 @@ function getSpanBeforeCursor() {
 export function shouldBeStyled(className: string) {
     if (styleOverride[className] === undefined) return selectionHasClass(className);
     return styleOverride[className];
+}
+
+export function getColor() {
+    if (styleOverride.color === undefined) {
+        if (selection!.rangeCount === 0) return undefined;
+        const span = getSpanBeforeCursor();
+
+        if (!span) return undefined;
+        return span.style.getPropertyValue("--color");
+    }
+    return styleOverride.color as string;
 }
 
 function initializeMagic() {

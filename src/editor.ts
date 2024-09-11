@@ -2,7 +2,6 @@
 // color color button based on selection
 // temp color override
 // fix ctrl a adding soh
-// style color based on previous color
 //
 // back-burner:
 // offset on continued lines
@@ -19,7 +18,7 @@
 // fix pasting a large amount of text messing up shadow
 
 import { calculateShadowColor, commaFormat } from "./util";
-import { shouldBeStyled, styleMagic } from "./styling";
+import { getColor, shouldBeStyled, styleMagic } from "./styling";
 import { refreshToolbar, styleOverride } from "./toolbar";
 
 let color = "#FFFFFF";
@@ -62,6 +61,11 @@ export function addEditorHooks() {
         });
         if (shouldBeStyled("magic")) {
             styleMagic(span);
+        }
+        const color = getColor();
+        if (color !== undefined && color !== "#FFFFFF" && color !== "") {
+            span.style.setProperty("--color", color);
+            span.style.setProperty("--shadow", calculateShadowColor(color));
         }
 
         // find cursor position

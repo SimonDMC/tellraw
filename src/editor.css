@@ -90,8 +90,12 @@ making it even less performant than it already is */
 }
 
 /* strikethrough */
-.editor * {
+#editor-overlay * {
   line-height: .2em;
+  color: transparent;
+}
+
+.editor * {
   position: relative;
   color: var(--color);
 }
