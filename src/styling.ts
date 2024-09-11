@@ -85,16 +85,14 @@ export function colorize(color: string, range: SelectionRange | null) {
 
     saveSnapshot();
 
-    const children = Array.from((range.commonAncestorContainer as HTMLElement).children).slice(range.startOffset, range.endOffset);
+    let childElements = (range.commonAncestorContainer as HTMLElement).children;
+    let children: Element[] = [];
 
-    // if the selection only has one character, it's not a part of fragment.children so it needs to be added manually
-    if (children.length === 0) {
-        const anchorNode = selection!.anchorNode! as HTMLElement;
-        if (anchorNode.classList) {
-            children.push(anchorNode);
-        } else {
-            children.push(anchorNode.parentElement!);
-        }
+    if (childElements) {
+        children = Array.from(childElements).slice(range.startOffset, range.endOffset);
+    } else {
+        // if the selection only has one character, it's not a part of fragment.children so it needs to be added manually
+        children = [range.commonAncestorContainer.parentElement!];
     }
 
     // set color of all children

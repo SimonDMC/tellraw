@@ -1,6 +1,9 @@
 // TODO:
 // color color button based on selection
 // temp color override
+// fix clicking outside not cancelling selection
+// fix ctrl a adding soh
+// style color based on previous color
 //
 // back-burner:
 // offset on continued lines
@@ -466,10 +469,9 @@ function fixMultiCharacterSelection(range: Range) {
 
 export function selectBetweenSpans(start: HTMLElement, end: HTMLElement, backwards: boolean, range: Range = selection!.getRangeAt(0)) {
     // find start and end indices
-    const commonAncestor = document.getElementById("editor")!;
-    const childNodesArray = [...commonAncestor.childNodes];
+    let commonAncestor = document.getElementById("editor")!;
 
-    if ((range.commonAncestorContainer as HTMLElement).id !== "editor") return;
+    const childNodesArray = [...commonAncestor.childNodes];
 
     if (backwards) {
         const startIndex = childNodesArray.indexOf(end) + 1;
