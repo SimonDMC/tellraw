@@ -1,7 +1,6 @@
 // TODO:
 // color color button based on selection
 // temp color override
-// fix clicking outside not cancelling selection
 // fix ctrl a adding soh
 // style color based on previous color
 //
@@ -396,7 +395,7 @@ function mouseUpSelectionChanged(e: PointerEvent) {
        triple click to select paragraph doesn't work but that would be
        non-trivial to implement and i'm not sure how i would go about it */
     if (
-        (e.target as HTMLElement).classList.contains("char") &&
+        ((e.target as HTMLElement).classList.contains("char") || (e.target as HTMLElement).id === "editor") &&
         mouseX == e.clientX &&
         mouseY == e.clientY &&
         mouseX != null &&
